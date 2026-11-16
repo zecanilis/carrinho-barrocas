@@ -71,10 +71,10 @@ class LocalStore {
     this.db.group.seedV = SEED_VERSAO;
     this._emit('group', 'products', 'lists');
   }
-  async addNewProducts() {
+  async addNewProducts(desde = 1) {
+    for (const p of Object.values(this.db.products)) if (desde < 5 && RENOMEAR[p.name]) p.name = RENOMEAR[p.name];
     const tem = new Set(Object.values(this.db.products).map(p => p.name.toLowerCase()));
     for (const p of PRODUTOS) if (NOVOS_V3.includes(p.n) && !tem.has(p.n.toLowerCase())) this.db.products['p-' + uid8()] = { name: p.n, receipt: p.t, section: p.s, unit: p.u, price: p.p, count: 0 };
-    for (const p of Object.values(this.db.products)) if (RENOMEAR[p.name]) p.name = RENOMEAR[p.name];
     this.db.group.seedV = SEED_VERSAO;
     this._emit('group', 'products');
   }
@@ -240,12 +240,12 @@ class FirebaseStore {
     await updateDoc(this._g(), { seedV: SEED_VERSAO });
   }
   // Junta só os produtos novos da versão 3, sem mexer nos existentes nem nas listas
-  async addNewProducts() {
+  async addNewProducts(desde = 1) {
     const { getDocs, writeBatch, doc, updateDoc } = this.fs;
     const docs = (await getDocs(this._c('products'))).docs;
-    const tem = new Set(docs.map(d => (d.data().name || '').toLowerCase()));
+    const tem = new Set(docs.map(d => { const n = d.data().name || ''; return ((desde < 5 && RENOMEAR[n]) || n).toLowerCase(); }));
     const b = writeBatch(this.db);
-    for (const d of docs) { const nv = RENOMEAR[d.data().name]; if (nv) b.update(d.ref, { name: nv }); }
+    for (const d of docs) { const nv = desde < 5 && RENOMEAR[d.data().name]; if (nv) b.update(d.ref, { name: nv }); }
     for (const p of PRODUTOS) if (NOVOS_V3.includes(p.n) && !tem.has(p.n.toLowerCase())) b.set(doc(this._c('products')), { name: p.n, receipt: p.t, section: p.s, unit: p.u, price: p.p, count: 0 });
     await b.commit();
     await updateDoc(this._g(), { seedV: SEED_VERSAO });

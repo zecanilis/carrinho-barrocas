@@ -469,7 +469,7 @@ document.addEventListener('click', async (e) => {
         if (!(await confirmar({ titulo: 'Atualizar base de produtos?', texto: `Os ${Object.keys(S.products).length} produtos atuais são substituídos pelos ${SEED.length} da base limpa. Produtos que tenhas criado ou editado perdem-se.${nl ? ` As ${nl} lista${nl > 1 ? 's' : ''} com produtos ficam vazias (o nome mantém-se).` : ''}`, botao: 'Atualizar' }))) break;
         b.disabled = true; b.textContent = 'A atualizar…';
         await store.resetProducts(S.lists); toast('Base de produtos atualizada.'); break; }
-      case 'novos-produtos': b.disabled = true; b.textContent = 'A adicionar…'; await store.addNewProducts(); toast('Produtos novos adicionados.'); break;
+      case 'novos-produtos': b.disabled = true; b.textContent = 'A adicionar…'; await store.addNewProducts(S.group.seedV || 1); toast('Produtos novos adicionados.'); break;
       case 'renomear-grupo': { const v = await pedirTexto('Nome do grupo', S.group.name); if (v) await store.renameGroup(v); break; }
       case 'sair': if (await confirmar({ titulo: store.demo ? 'Apagar a demonstração?' : 'Sair do grupo?', texto: store.demo ? 'Apaga tudo o que fizeste neste aparelho e recomeça.' : 'Deixas de ver as listas neste telemóvel. Podes voltar a entrar com o código.', botao: store.demo ? 'Apagar' : 'Sair' })) await store.leaveGroup(); break;
       case 'login': {
