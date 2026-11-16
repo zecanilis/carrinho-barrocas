@@ -278,7 +278,7 @@ function resultadosAdicionar(id) {
     if (p.section !== sec) { sec = p.section; out += `<h3 class="sec">${EMO[sec] || '🛒'} ${esc(sec)}</h3>`; }
     const na = !!(l.items || {})[p.id], sel = ui.sel.has(p.id);
     out += `<button class="prow ${sel ? 'sel' : ''}" ${na ? 'disabled' : ''} data-act="sel" data-pid="${p.id}" aria-pressed="${sel || na}">
-      <span class="grow stack0 left"><span class="iname">${esc(p.name)}</span><small class="muted">${eur(p.price)}/${p.unit}${p.count ? ` · comprado ${p.count}×` : ''}</small></span>
+      <span class="grow stack0 left"><span class="iname">${esc(p.name)}</span><small class="muted">${eur(p.price)}/${p.unit}</small></span>
       ${na ? `<span class="inlist">Na lista<span class="tick on sm">${ic('check', 18)}</span></span>` : `<span class="tick ${sel ? 'on acc' : ''} sm">${sel ? ic('check', 18) : ''}</span>`}</button>`;
   }
   return out || `<div class="empty"><b>Nada encontrado.</b><a href="#/produto/novo?lista=${id}&nome=${encodeURIComponent(ui.q)}">Criar “${esc(ui.q)}” como produto novo</a></div>`;
@@ -304,7 +304,7 @@ function listaProdutos() {
   for (const p of ps) {
     if (p.section !== sec) { sec = p.section; out += `<h3 class="sec">${EMO[sec] || '🛒'} ${esc(sec)} · ${cont[sec]}</h3>`; }
     out += `<div class="sw" data-sw="${p.id}"><div class="sw-act two"><a class="act orange" href="#/produto/${p.id}">${ic('edit', 20)}<span>Editar</span></a><button class="act red" data-act="apagar-produto" data-pid="${p.id}">${ic('trash', 20)}<span>Apagar</span></button></div>
-      <div class="sw-front prow static"><span class="grow iname left">${esc(p.name)}</span><small class="muted">${p.count || 0}×</small><b class="price">${eur(p.price)}${p.unit === 'kg' ? '/kg' : ''}</b></div></div>`;
+      <div class="sw-front prow static"><span class="grow iname left">${esc(p.name)}</span><b class="price">${eur(p.price)}${p.unit === 'kg' ? '/kg' : ''}</b></div></div>`;
   }
   return out || '<div class="empty"><b>Nada encontrado.</b></div>';
 }
