@@ -30,7 +30,7 @@ const ic = (n, s = 22, extra = '') => `<svg class="ic ${extra}" width="${s}" hei
 const store = makeStore();
 const S = { group: null, products: {}, lists: [], ready: { g: false, p: false, l: false } };
 let unsub = [];
-const ui = { sel: new Set(), q: '', sec: 'Todas', pq: '', installHidden: localStorage.getItem('cb-noinstall') === '1' };
+const ui = { sel: new Set(), q: '', sec: 'Todas', pq: '', psec: 'Todas', installHidden: localStorage.getItem('cb-noinstall') === '1' };
 
 const membro = (uid) => (S.group?.members || []).find(m => m.uid === uid);
 const souDono = () => S.group && S.group.owner === store.uid;
@@ -258,7 +258,7 @@ function menuLista(id) {
 function vAdicionar(id) {
   const l = S.lists.find(x => x.id === id);
   if (!l) return `${topo('Produtos', '#/')}<div class="empty">Esta lista já não existe.</div>`;
-  const secs = ['Todas', ...SECCOES.filter(s => Object.values(S.products).some(p => p.section === s))];
+  const secs = ['Todas', ...SECCOES.filter(s => Object.values(S.products).some(p => p.section === s)), ...(Object.values(S.products).some(p => p.section === 'Outros') ? ['Outros'] : [])];
   return `<div class="screen pad-bottom">
   ${topo('Produtos', `#/lista/${id}`, `<a class="txtbtn" href="#/produto/novo?lista=${id}">+ Novo</a>`, `<span class="small muted b7">Adicionar a ${esc(l.name)}</span>`)}
   <label class="search">${ic('search', 20)}<input type="search" placeholder="Procurar produto" aria-label="Procurar produto" data-search="add" value="${esc(ui.q)}"></label>
@@ -290,13 +290,14 @@ function vProdutos() {
   <header class="hero row between end"><div class="stack0"><span class="muted b6">${Object.keys(S.products).length} produtos</span><h1 class="big">Produtos</h1></div>
     <a class="sqbtn" href="#/produto/novo" aria-label="Novo produto">${ic('plus', 24)}</a></header>
   <label class="search">${ic('search', 20)}<input type="search" placeholder="Procurar produto" aria-label="Procurar produto" data-search="prod" value="${esc(ui.pq)}"></label>
+  <div class="tabs" role="tablist">${['Todas', ...SECCOES.filter(s => Object.values(S.products).some(p => p.section === s)), ...(Object.values(S.products).some(p => p.section === 'Outros') ? ['Outros'] : [])].map(s => `<button role="tab" aria-selected="${ui.psec === s}" class="tab ${ui.psec === s ? 'on' : ''}" data-psec="${esc(s)}">${s === 'Todas' ? s : (EMO[s] || '') + ' ' + esc(s)}</button>`).join('')}</div>
   <div id="prod-lista" class="stack8">${listaProdutos()}</div>
   <p class="hint">← desliza para editar ou apagar</p>
   </div>${nav('produtos')}`;
 }
 function listaProdutos() {
   const q = norm(ui.pq);
-  const ps = Object.values(S.products).filter(p => !q || norm(p.name).includes(q) || norm(p.receipt).includes(q))
+  const ps = Object.values(S.products).filter(p => (ui.psec === 'Todas' || p.section === ui.psec) && (!q || norm(p.name).includes(q) || norm(p.receipt).includes(q)))
     .sort((a, b) => secOrd(a.section) - secOrd(b.section) || (b.count || 0) - (a.count || 0) || a.name.localeCompare(b.name, 'pt'));
   const cont = {}; ps.forEach(p => cont[p.section] = (cont[p.section] || 0) + 1);
   let sec = '', out = '';
@@ -437,6 +438,7 @@ const falhou = (e) => { console.error(e); toast('Não foi possível guardar. Ten
 document.addEventListener('click', async (e) => {
   const chip = e.target.closest('[data-chip]'); if (chip) { $('#sheet [name=nome]').value = chip.dataset.chip; return; }
   const tab = e.target.closest('[data-sec]'); if (tab) { ui.sec = tab.dataset.sec; document.querySelectorAll('.tab').forEach(t => { t.classList.toggle('on', t === tab); t.setAttribute('aria-selected', t === tab); }); $('#resultados').innerHTML = resultadosAdicionar(rota().parts[1]); return; }
+  const pt = e.target.closest('[data-psec]'); if (pt) { ui.psec = pt.dataset.psec; document.querySelectorAll('[data-psec]').forEach(t => { t.classList.toggle('on', t === pt); t.setAttribute('aria-selected', t === pt); }); $('#prod-lista').innerHTML = listaProdutos(); return; }
   const b = e.target.closest('[data-act]'); if (!b) return;
   const { act, id, lid, pid } = b.dataset;
   try {
