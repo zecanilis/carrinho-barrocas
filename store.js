@@ -3,7 +3,7 @@
 //  - FirebaseStore: dados partilhados em tempo real (Firestore + login anónimo)
 //  - LocalStore: modo demonstração, tudo guardado só neste aparelho
 import { firebaseConfig } from './config.js';
-import { PRODUTOS } from './seed.js';
+import { PRODUTOS, SEED_VERSAO } from './seed.js';
 
 const CORES = ['#1565C0', '#AD1457', '#6A1B9A', '#2E7D32', '#EF6C00', '#00838F', '#5D4037', '#C62828'];
 const GKEY = 'cb-grupo';
@@ -50,7 +50,7 @@ class LocalStore {
 
   async createGroup(nome, meuNome) {
     const id = 'g-' + uid8();
-    this.db.group = { id, name: nome, code: novoCodigo(nome), owner: this.uid };
+    this.db.group = { id, name: nome, code: novoCodigo(nome), owner: this.uid, seedV: SEED_VERSAO };
     this.db.members = { [this.uid]: { name: meuNome, color: CORES[0], joinedAt: Date.now() } };
     this.db.products = {};
     for (const p of PRODUTOS) this.db.products['p-' + uid8()] = { name: p.n, receipt: p.t, section: p.s, unit: p.u, price: p.p, count: p.c };
@@ -64,6 +64,13 @@ class LocalStore {
   async newCode() { this.db.group.code = novoCodigo(this.db.group.name); this._emit('group'); }
   async removeMember(uid) { delete this.db.members[uid]; this._emit('group'); }
 
+  async resetProducts() {
+    this.db.products = {};
+    for (const p of PRODUTOS) this.db.products['p-' + uid8()] = { name: p.n, receipt: p.t, section: p.s, unit: p.u, price: p.p, count: p.c };
+    for (const l of Object.values(this.db.lists)) l.items = {};
+    this.db.group.seedV = SEED_VERSAO;
+    this._emit('group', 'products', 'lists');
+  }
   async addList(name, copyFrom) {
     const id = 'l-' + uid8();
     const items = {};
@@ -178,7 +185,7 @@ class FirebaseStore {
     const gref = doc(collection(this.db, 'groups'));
     this.gid = gref.id;
     const code = novoCodigo(nome);
-    await setDoc(gref, { name: nome, code, owner: this.uid, createdAt: Date.now() });
+    await setDoc(gref, { name: nome, code, owner: this.uid, createdAt: Date.now(), seedV: SEED_VERSAO });
     await setDoc(this._g('members', this.uid), { name: meuNome, color: CORES[0], code, joinedAt: Date.now() });
     await setDoc(doc(this.db, 'codes', code), { gid: this.gid });
     for (let i = 0; i < PRODUTOS.length; i += 400) {
@@ -208,6 +215,23 @@ class FirebaseStore {
     localStorage.removeItem(GKEY); location.reload();
   }
   async renameGroup(name) { await this.fs.updateDoc(this._g(), { name }); }
+  // Troca a base de produtos pela versão nova do seed.js (só o dono vê o botão)
+  async resetProducts(lists = []) {
+    const { getDocs, writeBatch, doc, updateDoc } = this.fs;
+    const atuais = (await getDocs(this._c('products'))).docs;
+    for (let i = 0; i < atuais.length; i += 400) {
+      const b = writeBatch(this.db);
+      for (const d of atuais.slice(i, i + 400)) b.delete(d.ref);
+      await b.commit();
+    }
+    for (let i = 0; i < PRODUTOS.length; i += 400) {
+      const b = writeBatch(this.db);
+      for (const p of PRODUTOS.slice(i, i + 400)) b.set(doc(this._c('products')), { name: p.n, receipt: p.t, section: p.s, unit: p.u, price: p.p, count: p.c });
+      await b.commit();
+    }
+    for (const l of lists) await updateDoc(this._g('lists', l.id), { items: {} });
+    await updateDoc(this._g(), { seedV: SEED_VERSAO });
+  }
   async newCode() {
     const { doc, getDoc, setDoc, deleteDoc, updateDoc } = this.fs;
     const g = (await getDoc(this._g())).data();

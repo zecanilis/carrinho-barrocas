@@ -1,5 +1,5 @@
 import { makeStore } from './store.js';
-import { SECCOES } from './seed.js';
+import { SECCOES, PRODUTOS as SEED, SEED_VERSAO } from './seed.js';
 
 // ------------------------------------------------------------------ utilidades
 const $ = (s, el = document) => el.querySelector(s);
@@ -153,7 +153,7 @@ function vEntrar(code) {
   ${store.demo ? '' : `<details class="card"><summary><b>Criar um grupo novo</b></summary>
     <form class="stack" data-form="criar" style="margin-top:12px">
       <label class="field">Nome do grupo<input name="grupo" required value="Condomínio Barrocas"></label>
-      <p class="muted small">Começa com os 233 produtos das faturas do Pingo Doce. Usa o nome que escreveste acima.</p>
+      <p class="muted small">Começa com os 153 produtos das faturas do Pingo Doce. Usa o nome que escreveste acima.</p>
       <button class="btn ghost" type="submit">Criar grupo</button>
     </form></details>`}
   ${dicaInstalar(true)}
@@ -351,6 +351,7 @@ function vGrupo() {
   <h3 class="sec">Pessoas · ${g.members.length}</h3>
   <div class="stack8">${mem}</div>
   ${store.user ? `<div class="prow static">${ic('users')}<span class="grow stack0 left"><small class="muted">Sessão iniciada com</small><b>${esc(store.user.email)}</b></span><button class="txtbtn" data-act="logout">Sair</button></div>` : ''}
+  ${souDono() && (S.group.seedV || 1) < SEED_VERSAO ? `<section class="card peach stack"><b>Base de produtos nova</b><span>Há uma base limpa com ${SEED.length} produtos, sem repetidos e com nomes simples. Substitui os ${Object.keys(S.products).length} atuais.</span><button class="btn" data-act="repor-produtos">Atualizar base de produtos</button></section>` : ''}
   ${souDono() && !store.demo ? `<button class="mitem" data-act="renomear-grupo">${ic('edit')}<span>Mudar o nome do grupo</span></button>` : ''}
   ${dicaInstalar(true)}
   <button class="mitem red" data-act="sair">${ic('trash')}<span>${store.demo ? 'Apagar a demonstração e recomeçar' : 'Sair do grupo neste telemóvel'}</span></button>
@@ -462,6 +463,11 @@ document.addEventListener('click', async (e) => {
       case 'novo-codigo': if (await confirmar({ titulo: 'Gerar código novo?', texto: 'O código atual deixa de funcionar para quem ainda não entrou. Quem já está no grupo continua.', botao: 'Gerar' })) { await store.newCode(); toast('Código novo criado.'); } break;
       case 'tirar-membro': { const m = membro(b.dataset.uid);
         if (await confirmar({ titulo: `Tirar ${esc(m.name)} do grupo?`, texto: `<b>${esc(m.name)}</b> deixa de ver e mexer nas listas. Pode voltar a entrar com um código.`, botao: 'Tirar' })) await store.removeMember(b.dataset.uid); break; }
+      case 'repor-produtos': {
+        const nl = S.lists.filter(l => Object.keys(l.items || {}).length).length;
+        if (!(await confirmar({ titulo: 'Atualizar base de produtos?', texto: `Os ${Object.keys(S.products).length} produtos atuais são substituídos pelos ${SEED.length} da base limpa. Produtos que tenhas criado ou editado perdem-se.${nl ? ` As ${nl} lista${nl > 1 ? 's' : ''} com produtos ficam vazias (o nome mantém-se).` : ''}`, botao: 'Atualizar' }))) break;
+        b.disabled = true; b.textContent = 'A atualizar…';
+        await store.resetProducts(S.lists); toast('Base de produtos atualizada.'); break; }
       case 'renomear-grupo': { const v = await pedirTexto('Nome do grupo', S.group.name); if (v) await store.renameGroup(v); break; }
       case 'sair': if (await confirmar({ titulo: store.demo ? 'Apagar a demonstração?' : 'Sair do grupo?', texto: store.demo ? 'Apaga tudo o que fizeste neste aparelho e recomeça.' : 'Deixas de ver as listas neste telemóvel. Podes voltar a entrar com o código.', botao: store.demo ? 'Apagar' : 'Sair' })) await store.leaveGroup(); break;
       case 'login': {

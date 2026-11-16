@@ -1,7 +1,7 @@
 # Carrinho Barrocas 🛒
 
 Web app de listas de compras do mês, partilhada em tempo real com o grupo **Condomínio Barrocas**.
-Funciona em qualquer telemóvel (Android e iPhone) e no computador. Começa com os 233 produtos das faturas do Pingo Doce.
+Funciona em qualquer telemóvel (Android e iPhone) e no computador. Começa com os 153 produtos das faturas do Pingo Doce.
 
 ## O que está nesta pasta
 
@@ -10,7 +10,7 @@ Funciona em qualquer telemóvel (Android e iPhone) e no computador. Começa com 
 | `index.html` | A app (aspeto e estrutura) |
 | `app.js` | Os ecrãs e o que cada botão faz |
 | `store.js` | Ligação aos dados (Firebase ou modo demonstração) |
-| `seed.js` | Os 233 produtos iniciais (nome, secção, unidade, preço, vezes comprado) |
+| `seed.js` | Os 153 produtos iniciais (nome, secção, unidade, preço, vezes comprado) |
 | `config.js` | **O único ficheiro que tens de editar**: a configuração do Firebase |
 | `firestore.rules` | As regras de segurança da base de dados |
 | `manifest.webmanifest`, `sw.js`, `icons/` | O que faz dela uma app instalável e que abre sem rede |
@@ -56,7 +56,7 @@ Enquanto `config.js` estiver a `null`, a app funciona em **modo demonstração**
 ## Passo 3 — Começar a usar
 
 1. Abre o link no teu telemóvel → escreve o teu nome → **Criar um grupo novo** → `Condomínio Barrocas`.
-   A app carrega os 233 produtos e fica tudo pronto.
+   A app carrega os 153 produtos e fica tudo pronto.
 2. Instala no ecrã principal:
    - **Android (Chrome)**: menu ⋮ → **Instalar app**.
    - **iPhone (Safari)**: botão **Partilhar** → **Adicionar ao ecrã principal**.
