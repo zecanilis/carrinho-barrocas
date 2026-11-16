@@ -1,0 +1,33 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function entrou() { return request.auth != null; }
+    function grupo(gid) { return get(/databases/$(database)/documents/groups/$(gid)).data; }
+    function membro(gid) { return entrou() && exists(/databases/$(database)/documents/groups/$(gid)/members/$(request.auth.uid)); }
+    function dono(gid) { return entrou() && grupo(gid).owner == request.auth.uid; }
+
+    // Códigos de convite: só se lê um código de cada vez (não dá para listar).
+    match /codes/{code} {
+      allow get: if entrou();
+      allow create: if entrou() && dono(request.resource.data.gid);
+      allow delete: if entrou() && dono(resource.data.gid);
+    }
+
+    match /groups/{gid} {
+      allow create: if entrou() && request.resource.data.owner == request.auth.uid;
+      allow read: if membro(gid);
+      allow update: if dono(gid) && request.resource.data.owner == resource.data.owner;
+      allow delete: if dono(gid);
+
+      // Entrar: só a própria pessoa, e só com o código certo do grupo.
+      match /members/{uid} {
+        allow read: if membro(gid);
+        allow create: if entrou() && request.auth.uid == uid && request.resource.data.code == grupo(gid).code;
+        allow update: if entrou() && request.auth.uid == uid;
+        allow delete: if entrou() && (request.auth.uid == uid || dono(gid));
+      }
+      match /products/{pid} { allow read, write: if membro(gid); }
+      match /lists/{lid} { allow read, write: if membro(gid); }
+    }
+  }
+}
