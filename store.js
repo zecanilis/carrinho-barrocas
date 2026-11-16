@@ -3,7 +3,7 @@
 //  - FirebaseStore: dados partilhados em tempo real (Firestore + login anónimo)
 //  - LocalStore: modo demonstração, tudo guardado só neste aparelho
 import { firebaseConfig } from './config.js';
-import { PRODUTOS, SEED_VERSAO, NOVOS_V3, RENOMEAR, REMOVER } from './seed.js';
+import { PRODUTOS, SEED_VERSAO, NOVOS_V3, novoNome, REMOVER } from './seed.js';
 
 const CORES = ['#1565C0', '#AD1457', '#6A1B9A', '#2E7D32', '#EF6C00', '#00838F', '#5D4037', '#C62828'];
 const GKEY = 'cb-grupo';
@@ -73,7 +73,7 @@ class LocalStore {
   }
   async addNewProducts(desde = 1) {
     if (desde < 10) for (const [id, p] of Object.entries(this.db.products)) if (REMOVER.includes(p.name)) delete this.db.products[id];
-    for (const p of Object.values(this.db.products)) if (desde < 5 && RENOMEAR[p.name]) p.name = RENOMEAR[p.name];
+    for (const p of Object.values(this.db.products)) { const nv = novoNome(p.name, desde); if (nv) p.name = nv; }
     const tem = new Set(Object.values(this.db.products).map(p => p.name.toLowerCase()));
     for (const p of PRODUTOS) if (NOVOS_V3.includes(p.n) && !tem.has(p.n.toLowerCase())) this.db.products['p-' + uid8()] = { name: p.n, receipt: p.t, section: p.s, unit: p.u, price: p.p, count: 0 };
     this.db.group.seedV = SEED_VERSAO;
@@ -244,10 +244,10 @@ class FirebaseStore {
   async addNewProducts(desde = 1) {
     const { getDocs, writeBatch, doc, updateDoc } = this.fs;
     const docs = (await getDocs(this._c('products'))).docs;
-    const tem = new Set(docs.map(d => { const n = d.data().name || ''; return ((desde < 5 && RENOMEAR[n]) || n).toLowerCase(); }));
+    const tem = new Set(docs.map(d => { const n = d.data().name || ''; return (novoNome(n, desde) || n).toLowerCase(); }));
     const b = writeBatch(this.db);
     for (const d of docs) if (desde < 10 && REMOVER.includes(d.data().name)) b.delete(d.ref);
-    for (const d of docs) { const nv = desde < 5 && RENOMEAR[d.data().name]; if (nv) b.update(d.ref, { name: nv }); }
+    for (const d of docs) { const nv = novoNome(d.data().name, desde); if (nv) b.update(d.ref, { name: nv }); }
     for (const p of PRODUTOS) if (NOVOS_V3.includes(p.n) && !tem.has(p.n.toLowerCase())) b.set(doc(this._c('products')), { name: p.n, receipt: p.t, section: p.s, unit: p.u, price: p.p, count: 0 });
     await b.commit();
     await updateDoc(this._g(), { seedV: SEED_VERSAO });
