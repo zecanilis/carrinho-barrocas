@@ -85,6 +85,9 @@ h1,h2,h3{margin:0}
 .tabs::-webkit-scrollbar{display:none}
 .tab{flex:none;border:none;font-size:14px;font-weight:800;padding:10px 16px;border-radius:999px;background:#fff;color:var(--ink);cursor:pointer}
 .tab.on{background:var(--ink);color:#fff}
+/* no computador (rato): os separadores passam para várias linhas em vez de deslizar */
+@media (min-width:960px){#app,.nav,.bottombar{max-width:880px}.fab{right:calc(50% - 420px)}}
+@media (hover:hover) and (pointer:fine){.tabs{flex-wrap:wrap;overflow:visible;margin:0;padding:2px 0 4px}.tab:hover{background:var(--peach)}.tab.on:hover{background:var(--ink)}}
 .prow{display:flex;align-items:center;gap:12px;padding:12px 14px;background:#fff;border-radius:16px;border:none;width:100%;text-align:left;cursor:pointer;min-height:60px}
 .prow.static{cursor:default}.prow.sel{background:var(--peach)}.prow:disabled{cursor:default;opacity:1}
 .prow small{font-size:13px}
