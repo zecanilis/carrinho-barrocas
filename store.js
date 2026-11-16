@@ -89,7 +89,7 @@ class LocalStore {
   }
   async renameList(id, name) { this.db.lists[id].name = name; this._emit('lists'); }
   async deleteList(id) { delete this.db.lists[id]; this._emit('lists'); }
-  async addItems(lid, pids, q = 0) {
+  async addItems(lid, pids, q = 1) {
     const l = this.db.lists[lid];
     for (const pid of pids) if (!l.items[pid]) l.items[pid] = { q, d: false, by: null, at: Date.now() };
     this._emit('lists');
@@ -273,7 +273,7 @@ class FirebaseStore {
   }
   async renameList(id, name) { await this.fs.updateDoc(this._g('lists', id), { name }); }
   async deleteList(id) { await this.fs.deleteDoc(this._g('lists', id)); }
-  async addItems(lid, pids, q = 0) {
+  async addItems(lid, pids, q = 1) {
     const upd = {};
     for (const pid of pids) upd[`items.${pid}`] = { q, d: false, by: null, at: Date.now() };
     await this.fs.updateDoc(this._g('lists', lid), upd);
