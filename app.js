@@ -64,7 +64,7 @@ async function start() {
 function ligar() {
   S.linked = true;
   unsub.forEach(f => f()); unsub = [];
-  unsub.push(store.subscribeGroup(g => { S.group = g; S.ready.g = true; if (g && !g.members.some(m => m.uid === store.uid) && !store.demo) { toast('Já não fazes parte deste grupo.'); store.leaveGroup(); } render(true); }));
+  unsub.push(store.subscribeGroup(g => { S.group = g; S.ready.g = true; if (g && g.members.length && !g.members.some(m => m.uid === store.uid) && !store.demo) { toast('Já não fazes parte deste grupo.'); store.leaveGroup(); } render(true); }));
   unsub.push(store.subscribeProducts(ps => { S.products = Object.fromEntries(ps.map(p => [p.id, p])); S.ready.p = true; render(true); }));
   unsub.push(store.subscribeLists(ls => { S.lists = ls.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)); S.ready.l = true; render(true); }));
 }

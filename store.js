@@ -122,8 +122,9 @@ class FirebaseStore {
 
   subscribeGroup(cb) {
     const { onSnapshot } = this.fs;
-    let g = null, ms = [];
-    const send = () => g && cb({ id: this.gid, ...g, members: ms });
+    let g = null, ms = null;
+    // só avisa quando já chegaram o grupo E a lista de pessoas
+    const send = () => g && ms && cb({ id: this.gid, ...g, members: ms });
     const perdeu = (e) => { if (e && e.code === 'permission-denied') { localStorage.removeItem(GKEY); location.reload(); } };
     const a = onSnapshot(this._g(), (s) => { g = s.data(); send(); }, perdeu);
     const b = onSnapshot(this._c('members'), (s) => { ms = s.docs.map(d => ({ uid: d.id, ...d.data() })); send(); }, perdeu);
