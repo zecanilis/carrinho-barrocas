@@ -272,10 +272,10 @@ function resultadosAdicionar(id) {
   const l = S.lists.find(x => x.id === id); if (!l) return '';
   const q = norm(ui.q);
   const ps = Object.values(S.products).filter(p => (ui.sec === 'Todas' || p.section === ui.sec) && (!q || norm(p.name).includes(q) || norm(p.receipt).includes(q)))
-    .sort((a, b) => secOrd(a.section) - secOrd(b.section) || (b.count || 0) - (a.count || 0) || a.name.localeCompare(b.name, 'pt'));
+    .sort((a, b) => secOrd(a.section) - secOrd(b.section) || a.name.localeCompare(b.name, 'pt', { sensitivity: 'base' }));
   let sec = '', out = '';
   for (const p of ps.slice(0, 300)) {
-    if (p.section !== sec) { sec = p.section; out += `<h3 class="sec">${EMO[sec] || '🛒'} ${esc(sec)}${sec === ps[0].section ? ' · mais comprados primeiro' : ''}</h3>`; }
+    if (p.section !== sec) { sec = p.section; out += `<h3 class="sec">${EMO[sec] || '🛒'} ${esc(sec)}</h3>`; }
     const na = !!(l.items || {})[p.id], sel = ui.sel.has(p.id);
     out += `<button class="prow ${sel ? 'sel' : ''}" ${na ? 'disabled' : ''} data-act="sel" data-pid="${p.id}" aria-pressed="${sel || na}">
       <span class="grow stack0 left"><span class="iname">${esc(p.name)}</span><small class="muted">${eur(p.price)}/${p.unit}${p.count ? ` · comprado ${p.count}×` : ''}</small></span>
@@ -298,7 +298,7 @@ function vProdutos() {
 function listaProdutos() {
   const q = norm(ui.pq);
   const ps = Object.values(S.products).filter(p => (ui.psec === 'Todas' || p.section === ui.psec) && (!q || norm(p.name).includes(q) || norm(p.receipt).includes(q)))
-    .sort((a, b) => secOrd(a.section) - secOrd(b.section) || (b.count || 0) - (a.count || 0) || a.name.localeCompare(b.name, 'pt'));
+    .sort((a, b) => secOrd(a.section) - secOrd(b.section) || a.name.localeCompare(b.name, 'pt', { sensitivity: 'base' }));
   const cont = {}; ps.forEach(p => cont[p.section] = (cont[p.section] || 0) + 1);
   let sec = '', out = '';
   for (const p of ps) {
