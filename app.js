@@ -351,7 +351,7 @@ function vGrupo() {
   <h3 class="sec">Pessoas · ${g.members.length}</h3>
   <div class="stack8">${mem}</div>
   ${store.user ? `<div class="prow static">${ic('users')}<span class="grow stack0 left"><small class="muted">Sessão iniciada com</small><b>${esc(store.user.email)}</b></span><button class="txtbtn" data-act="logout">Sair</button></div>` : ''}
-  ${souDono() && (S.group.seedV || 1) === 2 ? `<section class="card peach stack"><b>${NOVOS_V3.length} produtos novos</b><span>Batata, açúcar, detergente da roupa e outros básicos. Os produtos e listas que já tens ficam iguais.</span><button class="btn" data-act="novos-produtos">Adicionar à base</button></section>` : ''}
+  ${souDono() && (S.group.seedV || 1) >= 2 && S.group.seedV < SEED_VERSAO ? `<section class="card peach stack"><b>${S.group.seedV === 2 ? NOVOS_V3.length + ' produtos novos' : 'Atualização da base'}</b><span>${S.group.seedV === 2 ? 'Batata, açúcar, detergente da roupa e outros básicos. ' : ''}Os produtos e listas que já tens ficam iguais.</span><button class="btn" data-act="novos-produtos">Adicionar à base</button></section>` : ''}
   ${souDono() && (S.group.seedV || 1) < 2 ? `<section class="card peach stack"><b>Base de produtos nova</b><span>Há uma base limpa com ${SEED.length} produtos, sem repetidos e com nomes simples. Substitui os ${Object.keys(S.products).length} atuais.</span><button class="btn" data-act="repor-produtos">Atualizar base de produtos</button></section>` : ''}
   ${souDono() && !store.demo ? `<button class="mitem" data-act="renomear-grupo">${ic('edit')}<span>Mudar o nome do grupo</span></button>` : ''}
   ${dicaInstalar(true)}

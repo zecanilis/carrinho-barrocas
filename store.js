@@ -3,7 +3,7 @@
 //  - FirebaseStore: dados partilhados em tempo real (Firestore + login anónimo)
 //  - LocalStore: modo demonstração, tudo guardado só neste aparelho
 import { firebaseConfig } from './config.js';
-import { PRODUTOS, SEED_VERSAO, NOVOS_V3 } from './seed.js';
+import { PRODUTOS, SEED_VERSAO, NOVOS_V3, RENOMEAR } from './seed.js';
 
 const CORES = ['#1565C0', '#AD1457', '#6A1B9A', '#2E7D32', '#EF6C00', '#00838F', '#5D4037', '#C62828'];
 const GKEY = 'cb-grupo';
@@ -74,6 +74,7 @@ class LocalStore {
   async addNewProducts() {
     const tem = new Set(Object.values(this.db.products).map(p => p.name.toLowerCase()));
     for (const p of PRODUTOS) if (NOVOS_V3.includes(p.n) && !tem.has(p.n.toLowerCase())) this.db.products['p-' + uid8()] = { name: p.n, receipt: p.t, section: p.s, unit: p.u, price: p.p, count: 0 };
+    for (const p of Object.values(this.db.products)) if (RENOMEAR[p.name]) p.name = RENOMEAR[p.name];
     this.db.group.seedV = SEED_VERSAO;
     this._emit('group', 'products');
   }
@@ -241,8 +242,10 @@ class FirebaseStore {
   // Junta só os produtos novos da versão 3, sem mexer nos existentes nem nas listas
   async addNewProducts() {
     const { getDocs, writeBatch, doc, updateDoc } = this.fs;
-    const tem = new Set((await getDocs(this._c('products'))).docs.map(d => (d.data().name || '').toLowerCase()));
+    const docs = (await getDocs(this._c('products'))).docs;
+    const tem = new Set(docs.map(d => (d.data().name || '').toLowerCase()));
     const b = writeBatch(this.db);
+    for (const d of docs) { const nv = RENOMEAR[d.data().name]; if (nv) b.update(d.ref, { name: nv }); }
     for (const p of PRODUTOS) if (NOVOS_V3.includes(p.n) && !tem.has(p.n.toLowerCase())) b.set(doc(this._c('products')), { name: p.n, receipt: p.t, section: p.s, unit: p.u, price: p.p, count: 0 });
     await b.commit();
     await updateDoc(this._g(), { seedV: SEED_VERSAO });
