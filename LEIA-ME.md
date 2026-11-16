@@ -22,8 +22,8 @@ Enquanto `config.js` estiver a `null`, a app funciona em **modo demonstração**
 ## Passo 1 — Criar o Firebase (uma vez, ~10 minutos)
 
 1. Entra em <https://console.firebase.google.com> com a tua conta Google e carrega em **Criar projeto**. Nome: `carrinho-barrocas`. Podes desligar o Google Analytics.
-2. **Authentication** → *Começar* → separador *Sign-in method* → ativa **Anónimo** → Guardar.
-   (Cada telemóvel entra sozinho, sem palavras-passe. Quem entra num grupo é quem tem o código.)
+2. **Segurança → Authentication** → *Método de login* → **Adicionar novo provedor** → **Google** → ativar, escolher o email de suporte → Salvar.
+   Cada pessoa entra com a sua conta Google: fica reconhecida em qualquer telemóvel. Para entrar num grupo precisa também do código.
 3. **Firestore Database** → *Criar base de dados* → localização **eur3 (Europa)** → começa em *modo de produção*.
 4. Ainda no Firestore, separador **Regras**: apaga o que lá está, cola o conteúdo de `firestore.rules` e carrega em **Publicar**.
 5. Na roda dentada ⚙️ → **Definições do projeto** → em *As tuas apps* carrega no ícone **`</>`** (Web) → nome `Carrinho` → Registar.
@@ -61,7 +61,7 @@ Enquanto `config.js` estiver a `null`, a app funciona em **modo demonstração**
    - **Android (Chrome)**: menu ⋮ → **Instalar app**.
    - **iPhone (Safari)**: botão **Partilhar** → **Adicionar ao ecrã principal**.
 3. Separador **Grupo** → **Enviar convite** (WhatsApp, por exemplo). O convite leva o link e o código.
-   Quem o recebe abre o link, instala, escreve o nome e entra com o código.
+   Quem o recebe abre o link, instala, entra com a conta Google, escreve o nome e o código (ex.: `BAR-7KQ9-X2MP`).
 
 ## Como se usa
 
@@ -72,6 +72,13 @@ Enquanto `config.js` estiver a `null`, a app funciona em **modo demonstração**
 - **Desliza para a esquerda** para tirar um produto da lista, apagar uma lista ou editar/apagar um produto da base. Apagar **pede sempre confirmação**.
 - Ícone do PDF (ou ⋮) → **Exportar PDF** (escolhe *Guardar como PDF*) ou **Enviar como texto** para o WhatsApp.
 - Separador **Grupo**: código e QR para convidar, **Novo código**, tirar pessoas (só quem criou o grupo).
+
+## Segurança
+
+- Só quem entrou com uma conta Google **e** está no grupo lê ou escreve listas e produtos (regras do Firestore).
+- Os códigos de convite têm 8 caracteres aleatórios e não podem ser listados.
+- Fica no plano **Spark** (gratuito, sem cartão): nunca há custos.
+- Recomendado: limitar a chave à tua página. Google Cloud Console → *APIs e serviços* → *Credenciais* → *Browser key* → **Restrições de aplicações: Referenciadores HTTP** → `https://zecanilis.github.io/*` e `https://carrinho-barrocas.firebaseapp.com/*` → Guardar.
 
 ## Notas
 

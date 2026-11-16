@@ -58,7 +58,9 @@ async function start() {
   let gid;
   try { gid = await store.init(); }
   catch (e) { app.innerHTML = `<div class="loading"><b>Não foi possível ligar.</b><span>${esc(e.message)}</span><button class="btn" onclick="location.reload()">Tentar outra vez</button></div>`; return; }
-  if (gid) ligar(); else render();
+  if (gid === 'LOGIN') S.needLogin = true;
+  else if (gid) ligar();
+  render();
   window.addEventListener('hashchange', () => { ui.sel.clear(); ui.q = ''; render(); window.scrollTo(0, 0); });
 }
 function ligar() {
@@ -80,6 +82,7 @@ let lastKey = '';
 function render(fromData = false) {
   const app = $('#app');
   const { parts, qs } = rota();
+  if (S.needLogin) { app.innerHTML = vLogin(); return; }
   if (!S.linked) { if (!fromData || !app.dataset.onb) { app.dataset.onb = '1'; app.innerHTML = vEntrar(parts[0] === 'entrar' ? parts[1] : ''); } return; }
   delete app.dataset.onb;
   if (!S.ready.g || !S.ready.p || !S.ready.l) { app.innerHTML = `<div class="loading">${ic('cart', 40)}<span>A carregar as listas…</span></div>`; return; }
@@ -117,6 +120,22 @@ const topo = (titulo, voltar, extra = '', sub = '') => `<header class="top">
   <a href="${voltar}" class="iconbtn" aria-label="Voltar">${ic('back', 26)}</a>
   <div class="grow"><h1>${titulo}</h1>${sub}</div>${extra}</header>`;
 
+// ------------------------------------------------------------------ ecrã: login Google
+const G_LOGO = '<svg width="22" height="22" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>';
+function vLogin() {
+  return `<div class="screen onb">
+  <div class="logo">${ic('cart', 40)}</div>
+  <h1 class="big">Carrinho Barrocas</h1>
+  <p class="muted lead">Listas de compras do mês, partilhadas em tempo real.</p>
+  <section class="card stack">
+    <h2>Entrar</h2>
+    <p class="muted" style="margin:0;line-height:1.45">Usamos a tua conta Google só para te reconhecer em qualquer telemóvel. Não lemos o teu email nem mais nada.</p>
+    <button class="btn ghost gbtn" data-act="login">${G_LOGO}<span>Entrar com a conta Google</span></button>
+  </section>
+  ${dicaInstalar(true)}
+  </div>`;
+}
+
 // ------------------------------------------------------------------ ecrã: entrar / criar
 function vEntrar(code) {
   return `<div class="screen onb">
@@ -126,8 +145,8 @@ function vEntrar(code) {
   ${store.demo ? `<div class="card warn"><b>Modo demonstração.</b> Ainda não está ligado ao Firebase: o que fizeres fica só neste aparelho. Dá para experimentar à vontade.</div>` : ''}
   <form class="card stack" data-form="entrar">
     <h2>${store.demo ? 'Começar' : 'Entrar num grupo'}</h2>
-    <label class="field">O teu nome<input name="nome" required maxlength="20" autocomplete="given-name" value="${esc(localStorage.getItem('cb-nome') || '')}"></label>
-    ${store.demo ? '' : `<label class="field">Código do grupo<input name="code" required value="${esc(code || '')}" placeholder="BAR-1234" autocapitalize="characters" class="code"></label>
+    <label class="field">O teu nome<input name="nome" required maxlength="20" autocomplete="given-name" value="${esc(localStorage.getItem('cb-nome') || (store.user?.name || '').split(' ')[0])}"></label>
+    ${store.demo ? '' : `<label class="field">Código do grupo<input name="code" required value="${esc(code || '')}" placeholder="BAR-XXXX-XXXX" autocapitalize="characters" autocomplete="off" class="code"></label>
     <button class="btn" type="submit">Entrar</button>`}
     ${store.demo ? `<label class="field">Nome do grupo<input name="grupo" value="Condomínio Barrocas"></label><button class="btn" type="submit" data-criar="1">Começar</button>` : ''}
   </form>
@@ -330,6 +349,7 @@ function vGrupo() {
   </section>`}
   <h3 class="sec">Pessoas · ${g.members.length}</h3>
   <div class="stack8">${mem}</div>
+  ${store.user ? `<div class="prow static">${ic('users')}<span class="grow stack0 left"><small class="muted">Sessão iniciada com</small><b>${esc(store.user.email)}</b></span><button class="txtbtn" data-act="logout">Sair</button></div>` : ''}
   ${souDono() && !store.demo ? `<button class="mitem" data-act="renomear-grupo">${ic('edit')}<span>Mudar o nome do grupo</span></button>` : ''}
   ${dicaInstalar(true)}
   <button class="mitem red" data-act="sair">${ic('trash')}<span>${store.demo ? 'Apagar a demonstração e recomeçar' : 'Sair do grupo neste telemóvel'}</span></button>
@@ -442,6 +462,16 @@ document.addEventListener('click', async (e) => {
         if (await confirmar({ titulo: `Tirar ${esc(m.name)} do grupo?`, texto: `<b>${esc(m.name)}</b> deixa de ver e mexer nas listas. Pode voltar a entrar com um código.`, botao: 'Tirar' })) await store.removeMember(b.dataset.uid); break; }
       case 'renomear-grupo': { const v = await pedirTexto('Nome do grupo', S.group.name); if (v) await store.renameGroup(v); break; }
       case 'sair': if (await confirmar({ titulo: store.demo ? 'Apagar a demonstração?' : 'Sair do grupo?', texto: store.demo ? 'Apaga tudo o que fizeste neste aparelho e recomeça.' : 'Deixas de ver as listas neste telemóvel. Podes voltar a entrar com o código.', botao: store.demo ? 'Apagar' : 'Sair' })) await store.leaveGroup(); break;
+      case 'login': {
+        b.disabled = true; b.querySelector('span').textContent = 'Um momento…';
+        try {
+          const r = await store.login();
+          if (r === null) return; // vai sair da página (login por redirecionamento)
+          if (r === 'CANCEL') { b.disabled = false; b.querySelector('span').textContent = 'Entrar com a conta Google'; return; }
+          S.needLogin = false; if (r) ligar(); render();
+        } catch (err) { toast(err.message); b.disabled = false; b.querySelector('span').textContent = 'Entrar com a conta Google'; }
+        break; }
+      case 'logout': if (await confirmar({ titulo: 'Terminar sessão?', texto: 'Neste aparelho deixas de ver as listas até voltares a entrar com a conta Google. O grupo e as listas ficam como estão.', botao: 'Sair' })) await store.logout(); break;
       case 'esconder-instalar': ui.installHidden = true; localStorage.setItem('cb-noinstall', '1'); b.closest('.install').remove(); break;
       case 'instalar': if (window.__bip) { window.__bip.prompt(); window.__bip = null; } break;
     }

@@ -8,11 +8,14 @@ import { PRODUTOS } from './seed.js';
 const CORES = ['#1565C0', '#AD1457', '#6A1B9A', '#2E7D32', '#EF6C00', '#00838F', '#5D4037', '#C62828'];
 const GKEY = 'cb-grupo';
 
+// Código de convite longo e sem letras que se confundem (0/O, 1/I/L): ex. BAR-7KQ9-X2MP
+const ALFA = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 export function novoCodigo(nome) {
-  const letras = (nome || 'CAR').normalize('NFD').replace(/[^A-Za-z]/g, '').toUpperCase();
-  const pref = (letras.slice(-3) || 'CAR').padEnd(3, 'X');
-  const num = String(Math.floor(1000 + Math.random() * 9000));
-  return `${pref}-${num}`;
+  const pal = (nome || 'Carrinho').normalize('NFD').replace(/[^A-Za-z ]/g, '').trim().split(/\s+/).pop().toUpperCase();
+  const pref = (pal.slice(0, 3) || 'CAR').padEnd(3, 'X');
+  const r = new Uint32Array(8); crypto.getRandomValues(r);
+  const bloco = (i) => Array.from(r.slice(i, i + 4), n => ALFA[n % ALFA.length]).join('');
+  return `${pref}-${bloco(0)}-${bloco(4)}`;
 }
 const uid8 = () => Math.random().toString(36).slice(2, 10);
 
@@ -104,19 +107,56 @@ class FirebaseStore {
     this.fs = fs;
     const app = initializeApp(firebaseConfig);
     this.db = fs.initializeFirestore(app, { localCache: fs.persistentLocalCache({ tabManager: fs.persistentMultipleTabManager() }) });
-    const a = auth.getAuth(app);
-    await auth.setPersistence(a, auth.browserLocalPersistence);
-    await a.authStateReady();
-    const user = a.currentUser || (await auth.signInAnonymously(a)).user;
-    this.uid = user.uid;
+    this.auth = auth;
+    this.a = auth.getAuth(app);
+    this.a.languageCode = 'pt';
+    await auth.setPersistence(this.a, auth.browserLocalPersistence);
+    await auth.getRedirectResult(this.a).catch(() => {});
+    await this.a.authStateReady();
+    const u = this.a.currentUser;
+    if (!u || u.isAnonymous) return 'LOGIN';
+    return this._entrou();
+  }
+  // Depois do login: descobre o grupo desta pessoa (neste aparelho ou guardado na conta)
+  async _entrou() {
+    const fs = this.fs, u = this.a.currentUser;
+    this.uid = u.uid;
+    this.user = { name: u.displayName || '', email: u.email || '', photo: u.photoURL || '' };
+    await u.getIdToken(true);
     this.gid = localStorage.getItem(GKEY);
-    if (this.gid) {
-      // confirma que ainda somos membros
-      const m = await fs.getDoc(fs.doc(this.db, 'groups', this.gid, 'members', this.uid)).catch(() => null);
-      if (!m || !m.exists()) { localStorage.removeItem(GKEY); this.gid = null; }
+    if (!this.gid) {
+      const me = await fs.getDoc(fs.doc(this.db, 'users', this.uid)).catch(() => null);
+      this.gid = me && me.exists() ? me.data().gid || null : null;
     }
+    if (this.gid) {
+      const m = await fs.getDoc(fs.doc(this.db, 'groups', this.gid, 'members', this.uid)).catch(() => null);
+      if (!m || !m.exists()) this.gid = null;
+    }
+    if (this.gid) localStorage.setItem(GKEY, this.gid); else localStorage.removeItem(GKEY);
     return this.gid;
   }
+  async login() {
+    const auth = this.auth, a = this.a;
+    const p = new auth.GoogleAuthProvider();
+    p.setCustomParameters({ prompt: 'select_account' });
+    try {
+      if (a.currentUser && a.currentUser.isAnonymous) {
+        // quem já usava a app sem login fica com a mesma identidade (e o mesmo grupo)
+        try { await auth.linkWithPopup(a.currentUser, p); }
+        catch (e) {
+          if (e.code === 'auth/credential-already-in-use') await auth.signInWithCredential(a, auth.GoogleAuthProvider.credentialFromError(e));
+          else throw e;
+        }
+      } else await auth.signInWithPopup(a, p);
+    } catch (e) {
+      if (['auth/popup-blocked', 'auth/operation-not-supported-in-this-environment', 'auth/web-storage-unsupported'].includes(e.code)) { await auth.signInWithRedirect(a, p); return null; }
+      if (['auth/popup-closed-by-user', 'auth/cancelled-popup-request'].includes(e.code)) return 'CANCEL';
+      throw new Error('Não foi possível entrar com a conta Google (' + (e.code || e.message) + ').');
+    }
+    return this._entrou();
+  }
+  async logout() { localStorage.removeItem(GKEY); await this.auth.signOut(this.a); location.reload(); }
+  _guardarGrupo() { return this.fs.setDoc(this.fs.doc(this.db, 'users', this.uid), { gid: this.gid, email: this.user.email }, { merge: true }); }
   _g(...p) { return this.fs.doc(this.db, 'groups', this.gid, ...p); }
   _c(...p) { return this.fs.collection(this.db, 'groups', this.gid, ...p); }
 
@@ -146,22 +186,25 @@ class FirebaseStore {
       for (const p of PRODUTOS.slice(i, i + 400)) b.set(doc(this._c('products')), { name: p.n, receipt: p.t, section: p.s, unit: p.u, price: p.p, count: p.c });
       await b.commit();
     }
+    await this._guardarGrupo();
     localStorage.setItem(GKEY, this.gid);
     return this.gid;
   }
   async joinGroup(code, meuNome) {
     const { doc, getDoc, setDoc, getDocs, collection } = this.fs;
-    code = code.trim().toUpperCase();
+    code = code.trim().toUpperCase().replace(/\s+/g, '');
     const c = await getDoc(doc(this.db, 'codes', code)).catch(() => null);
     if (!c || !c.exists()) throw new Error('Código não encontrado. Confirma com quem te convidou.');
     this.gid = c.data().gid;
     const used = (await getDocs(collection(this.db, 'groups', this.gid, 'members')).catch(() => ({ docs: [] }))).docs.length;
     await setDoc(this._g('members', this.uid), { name: meuNome, color: CORES[used % CORES.length], code, joinedAt: Date.now() });
+    await this._guardarGrupo();
     localStorage.setItem(GKEY, this.gid);
     return this.gid;
   }
   async leaveGroup() {
     await this.fs.deleteDoc(this._g('members', this.uid)).catch(() => {});
+    await this.fs.setDoc(this.fs.doc(this.db, 'users', this.uid), { gid: null }, { merge: true }).catch(() => {});
     localStorage.removeItem(GKEY); location.reload();
   }
   async renameGroup(name) { await this.fs.updateDoc(this._g(), { name }); }

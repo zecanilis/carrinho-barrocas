@@ -1,10 +1,16 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    function entrou() { return request.auth != null; }
+    // Só entra quem fez login com uma conta Google (o login anónimo não chega)
+    function entrou() { return request.auth != null && request.auth.token.email is string; }
     function grupo(gid) { return get(/databases/$(database)/documents/groups/$(gid)).data; }
     function membro(gid) { return entrou() && exists(/databases/$(database)/documents/groups/$(gid)/members/$(request.auth.uid)); }
     function dono(gid) { return entrou() && grupo(gid).owner == request.auth.uid; }
+
+    // Cada pessoa guarda aqui em que grupo está, para o encontrar noutro telemóvel.
+    match /users/{uid} {
+      allow read, write: if entrou() && request.auth.uid == uid;
+    }
 
     // Códigos de convite: só se lê um código de cada vez (não dá para listar).
     match /codes/{code} {
