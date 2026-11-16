@@ -135,8 +135,9 @@ details summary{cursor:pointer;font-size:16px}
 /* folhas e diálogos */
 .overlay{position:fixed;inset:0;background:rgba(62,39,35,.45);z-index:20;display:flex;align-items:flex-end;justify-content:center}
 .overlay.center{align-items:center;padding:24px}
-.sheet{width:100%;max-width:560px;background:var(--ground);border-radius:28px 28px 0 0;padding:12px 22px calc(26px + var(--safe-b));animation:up .2s ease}
+.sheet{position:relative;width:100%;max-width:560px;background:var(--ground);border-radius:28px 28px 0 0;padding:12px 22px calc(26px + var(--safe-b));animation:up .2s ease}
 .sheet h2{font-size:24px;font-weight:800}
+.xclose{position:absolute;top:14px;right:14px;width:40px;height:40px;border-radius:999px;border:0;background:#EFE5DD;color:inherit;display:grid;place-items:center;cursor:pointer}.xclose:active{transform:scale(.94)}
 .grab{width:44px;height:5px;border-radius:999px;background:#D7CCC8;margin:0 auto 14px}
 .dialog{width:100%;max-width:400px;background:var(--ground);border-radius:26px;padding:24px 20px 18px;display:flex;flex-direction:column;gap:12px;align-items:center;text-align:center}
 .dialog h2{font-size:21px;font-weight:800}.dialog p{margin:0;font-size:16px;line-height:1.45}

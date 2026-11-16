@@ -21,6 +21,7 @@ const I = {
   cart: '<path d="M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.5L21 8H6"/><circle cx="10" cy="20" r="1.3"/><circle cx="17" cy="20" r="1.3"/>',
   share: '<path d="M12 3v12"/><path d="M7 8l5-5 5 5"/><path d="M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/>',
   trash: '<path d="M4 7h16"/><path d="M10 11v6M14 11v6"/><path d="M6 7l1 13h10l1-13"/><path d="M9 7V4h6v3"/>',
+  close: '<path d="M6 6l12 12M18 6L6 18"/>',
   edit: '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M14 6l4 4"/>',
   users: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14.5a5 5 0 0 1 5.5 5"/>',
 };
@@ -408,7 +409,8 @@ async function partilharTexto(id) {
 function abrirSheet(html) {
   fecharSheet();
   const d = document.createElement('div'); d.className = 'overlay'; d.id = 'sheet';
-  d.innerHTML = `<div class="sheet" role="dialog" aria-modal="true"><div class="grab"></div>${html}</div>`;
+  d.innerHTML = `<div class="sheet" role="dialog" aria-modal="true"><div class="grab"></div><button type="button" class="xclose" aria-label="Fechar">${ic('close')}</button>${html}</div>`;
+  d.querySelector('.xclose').addEventListener('click', fecharSheet);
   d.addEventListener('click', (e) => { if (e.target === d) fecharSheet(); });
   document.body.appendChild(d);
   setTimeout(() => d.querySelector('input')?.focus(), 50);
