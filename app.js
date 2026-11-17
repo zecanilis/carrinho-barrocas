@@ -233,7 +233,6 @@ function vLista(id) {
     const step = p.unit === 'kg' ? 0.5 : 1;
     rows += `<div class="sw" data-sw="${pid}"><div class="sw-act"><button class="act red" data-act="tirar" data-lid="${id}" data-pid="${pid}">${ic('trash', 20)}<span>Tirar</span></button></div>
     <div class="sw-front lrowi ${it.d ? 'done' : ''}">
-      <button class="tick xs ${it.d ? 'on' : ''}" aria-pressed="${!!it.d}" aria-label="${it.d ? 'Desmarcar' : 'Marcar como comprado'}" data-act="tick" data-lid="${id}" data-pid="${pid}">${it.d ? ic('check', 16) : ''}</button>
       <span class="grow nm"><span class="iname" title="${esc(p.name)} · ${eur(p.price)}/${p.unit}">${esc(p.name)}</span>${it.d && it.by ? av(it.by, 18) : ''}</span>
       <div class="stepper sm">
         <button class="sbtn" aria-label="Menos" data-act="qtd" data-lid="${id}" data-pid="${pid}" data-d="${-step}">${ic('minus', 16)}</button>
@@ -241,10 +240,11 @@ function vLista(id) {
         <button class="sbtn" aria-label="Mais" data-act="qtd" data-lid="${id}" data-pid="${pid}" data-d="${step}">${ic('plus', 16)}</button>
       </div>
       <b class="lp">${eur((it.q || 0) * p.price)}</b>
+      <button class="tick xs ${it.d ? 'on' : ''}" aria-pressed="${!!it.d}" aria-label="${it.d ? 'Desmarcar' : 'Marcar como comprado'}" data-act="tick" data-lid="${id}" data-pid="${pid}">${it.d ? ic('check', 16) : ''}</button>
     </div></div>`;
   }
   if (sec) rows += '</div>';
-  return `${demoBar()}<div class="screen pad-fab">
+  return `${demoBar()}<div class="screen pad-bottom">
   ${topo(esc(l.name), '#/', `<button class="iconbtn soft" aria-label="Exportar PDF" data-act="pdf" data-id="${id}">${ic('pdf', 22)}</button><button class="iconbtn" aria-label="Mais opções" data-act="menu-lista" data-id="${id}">${ic('dots', 22)}</button>`,
     `<a href="#/grupo" class="row gap6 small muted b7 nolink">${avs(20)}Partilhada com ${S.group.members.length}</a>`)}
   <section class="summary slim" aria-label="Resumo">
@@ -253,7 +253,7 @@ function vLista(id) {
   </section>
   <div class="stack8">${rows || `<div class="empty">${ic('plus', 40)}<b>Lista vazia.</b><span>Carrega no + para adicionar produtos.</span></div>`}</div>
   ${its.length ? '<p class="hint">← desliza um produto para o tirar da lista</p>' : ''}
-  <a class="fab" href="#/adicionar/${id}" aria-label="Adicionar produtos">${ic('plus', 30)}</a></div>`;
+  <div class="bottombar"><a class="btn" href="#/adicionar/${id}">${ic('plus', 22)}<span>Adicionar produtos</span></a></div></div>`;
 }
 function menuLista(id) {
   const l = S.lists.find(x => x.id === id);
