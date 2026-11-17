@@ -264,13 +264,23 @@ function menuLista(id) {
     <button class="mitem red" data-act="apagar-lista" data-id="${id}">${ic('trash')}<span>Apagar lista</span></button></div>`);
 }
 
+// ------------------------------------------------------------------ escolha de secção
+const secsDisp = () => ['Todas', ...SECCOES.filter(s => Object.values(S.products).some(p => p.section === s)), ...(Object.values(S.products).some(p => p.section === 'Outros') ? ['Outros'] : [])];
+const secLbl = (s) => s === 'Todas' ? '🛒 Todas' : `${EMO[s] || '🛒'} ${esc(s)}`;
+const chipSec = (k) => { const s = k === 'add' ? ui.sec : ui.psec; return `<div class="row gap8"><button class="secchip" data-act="escolher-sec" data-k="${k}">${secLbl(s)} <span class="chev">▾</span></button></div>`; };
+function sheetSeccoes(k) {
+  const atual = k === 'add' ? ui.sec : ui.psec, ps = Object.values(S.products);
+  abrirSheet(`<div class="stack"><h2>Secção</h2><div class="secgrid">${secsDisp().map(s => `<button class="secopt ${s === atual ? 'on' : ''}" data-act="pick-sec" data-k="${k}" data-s="${esc(s)}"><span>${secLbl(s)}</span><small>${s === 'Todas' ? ps.length : ps.filter(p => p.section === s).length}</small></button>`).join('')}</div></div>`);
+}
+
 // ------------------------------------------------------------------ ecrã: adicionar
 function vAdicionar(id) {
   const l = S.lists.find(x => x.id === id);
   if (!l) return `${topo('Produtos', '#/')}<div class="empty">Esta lista já não existe.</div>`;
   return `<div class="screen pad-bottom">
   ${topo('Produtos', `#/lista/${id}`, `<a class="txtbtn" href="#/produto/novo?lista=${id}">+ Novo</a>`, `<span class="small muted b7">Adicionar a ${esc(l.name)}</span>`)}
-  <div class="row gap8"><label class="search grow">${ic('search', 20)}<input type="search" placeholder="Procurar" aria-label="Procurar produto" data-search="add" value="${esc(ui.q)}"></label>${(() => { const secs = ['Todas', ...SECCOES.filter(s => Object.values(S.products).some(p => p.section === s)), ...(Object.values(S.products).some(p => p.section === 'Outros') ? ['Outros'] : [])]; return `<select class="secsel" data-secsel="add" aria-label="Secção">${secs.map(s => `<option value="${esc(s)}" ${ui.sec === s ? 'selected' : ''}>${s === 'Todas' ? 'Todas' : (EMO[s] || '') + ' ' + esc(s)}</option>`).join('')}</select>`; })()}</div>
+  <label class="search">${ic('search', 20)}<input type="search" placeholder="Procurar produto" aria-label="Procurar produto" data-search="add" value="${esc(ui.q)}"></label>
+  ${chipSec('add')}
   <div id="resultados" class="stack8">${resultadosAdicionar(id)}</div>
   <div class="bottombar"><button class="btn" data-act="adicionar" data-id="${id}" ${ui.sel.size ? '' : 'disabled'}>${ic('check', 22)}<span id="addlbl">${lblAdd()}</span></button></div>
   </div>`;
@@ -298,7 +308,8 @@ function vProdutos() {
   return `${demoBar()}<div class="screen pad-nav">
   <header class="hero row between end"><div class="stack0"><span class="muted b6">${Object.keys(S.products).length} produtos</span><h1 class="big">Produtos</h1></div>
     <a class="sqbtn" href="#/produto/novo" aria-label="Novo produto">${ic('plus', 24)}</a></header>
-  <div class="row gap8"><label class="search grow">${ic('search', 20)}<input type="search" placeholder="Procurar" aria-label="Procurar produto" data-search="prod" value="${esc(ui.pq)}"></label>${(() => { const secs = ['Todas', ...SECCOES.filter(s => Object.values(S.products).some(p => p.section === s)), ...(Object.values(S.products).some(p => p.section === 'Outros') ? ['Outros'] : [])]; return `<select class="secsel" data-secsel="prod" aria-label="Secção">${secs.map(s => `<option value="${esc(s)}" ${ui.psec === s ? 'selected' : ''}>${s === 'Todas' ? 'Todas' : (EMO[s] || '') + ' ' + esc(s)}</option>`).join('')}</select>`; })()}</div>
+  <label class="search">${ic('search', 20)}<input type="search" placeholder="Procurar produto" aria-label="Procurar produto" data-search="prod" value="${esc(ui.pq)}"></label>
+  ${chipSec('prod')}
   <div id="prod-lista" class="stack8">${listaProdutos()}</div>
   <p class="hint">← desliza para editar ou apagar</p>
   </div>${nav('produtos')}`;
@@ -456,6 +467,8 @@ document.addEventListener('click', async (e) => {
   try {
     switch (act) {
       case 'nova-lista': sheetNovaLista(); break;
+      case 'escolher-sec': sheetSeccoes(b.dataset.k); break;
+      case 'pick-sec': { if (b.dataset.k === 'add') ui.sec = b.dataset.s; else ui.psec = b.dataset.s; fecharSheet(); render(); window.scrollTo(0, 0); break; }
       case 'toggle-sec': { const s = b.dataset.s; if (ui.fechadas.has(s)) ui.fechadas.delete(s); else ui.fechadas.add(s); render(); break; }
       case 'menu-lista': menuLista(id); break;
       case 'pdf': pdf(id); break;
