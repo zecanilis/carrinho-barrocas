@@ -31,7 +31,7 @@ const ic = (n, s = 22, extra = '') => `<svg class="ic ${extra}" width="${s}" hei
 const store = makeStore();
 const S = { group: null, products: {}, lists: [], ready: { g: false, p: false, l: false } };
 let unsub = [];
-const ui = { sel: new Set(), q: '', sec: 'Todas', pq: '', psec: 'Todas', installHidden: localStorage.getItem('cb-noinstall') === '1' };
+const ui = { fechadas: new Set(), sel: new Set(), q: '', sec: 'Todas', pq: '', psec: 'Todas', installHidden: localStorage.getItem('cb-noinstall') === '1' };
 
 const membro = (uid) => (S.group?.members || []).find(m => m.uid === uid);
 const souDono = () => S.group && S.group.owner === store.uid;
@@ -175,21 +175,30 @@ async function onEntrar(form, criar) {
 
 // ------------------------------------------------------------------ ecrã: listas
 function vListas() {
-  const cards = S.lists.map(l => {
-    const r = resumo(l), pct = r.n ? Math.round(r.done / r.n * 100) : 0, fim = r.n > 0 && r.done === r.n;
-    return `<div class="sw" data-sw="${l.id}" data-kind="lista"><div class="sw-act"><button class="act red" data-act="apagar-lista" data-id="${l.id}">${ic('trash', 22)}<span>Apagar</span></button></div>
-      <a class="sw-front card listcard" href="#/lista/${l.id}">
-        <div class="row between"><span class="h3">${esc(l.name)}</span>${fim ? '<span class="pill ok">Concluída</span>' : '<span class="pill">A decorrer</span>'}</div>
-        <div class="row between muted"><span>${r.n} itens · ${r.done} no carrinho</span><b class="ink">${eur(r.tot)}</b></div>
-        <div class="bar"><i style="width:${pct}%" class="${fim ? 'ok' : ''}"></i></div>
-        <div class="row between small muted"><span>Criada a ${new Date(l.createdAt).toLocaleDateString('pt-PT')}</span>${l.createdBy ? av(l.createdBy, 22) : ''}</div>
+  const curL = S.lists.find(l => { const r = resumo(l); return !(r.n && r.done === r.n); }) || S.lists[0];
+  const swAct = (l) => `<div class="sw-act"><button class="act red" data-act="apagar-lista" data-id="${l.id}">${ic('trash', 22)}<span>Apagar</span></button></div>`;
+  let cur = '';
+  if (curL) {
+    const r = resumo(curL), pct = r.n ? Math.round(r.done / r.n * 100) : 0, fim = r.n > 0 && r.done === r.n;
+    cur = `<div class="sw big-sw" data-sw="${curL.id}" data-kind="lista">${swAct(curL)}
+      <a class="sw-front curcard" href="#/lista/${curL.id}">
+        <div class="row between small b7 o9"><span>${fim ? 'Última lista' : 'Lista em curso'}</span><span>${r.n} itens</span></div>
+        <div class="row between end gap8"><span class="curname">${esc(curL.name)}</span><span class="curtot">${eur(r.tot)}</span></div>
+        <div class="bar light"><i style="width:${pct}%"></i></div>
+        <div class="row between small b7"><span>${r.done} de ${r.n} no carrinho</span><span class="openbtn">Abrir lista →</span></div>
       </a></div>`;
+  }
+  const outras = S.lists.filter(l => l !== curL).map(l => {
+    const r = resumo(l), fim = r.n > 0 && r.done === r.n;
+    return `<div class="sw" data-sw="${l.id}" data-kind="lista">${swAct(l)}
+      <a class="sw-front lrow" href="#/lista/${l.id}"><span class="grow b7">${esc(l.name)}</span>${fim ? '<span class="pill ok">Concluída</span>' : '<span class="pill">A decorrer</span>'}<b class="lp">${eur(r.tot)}</b></a></div>`;
   }).join('');
   return `${demoBar()}<div class="screen pad-nav">
   <header class="hero"><span class="muted b6">${esc(S.group.name)}</span>
     <div class="row between"><h1 class="big">As minhas listas</h1><a href="#/grupo" class="avbox" aria-label="Grupo">${avs(30)}</a></div></header>
   ${dicaInstalar()}
-  <div class="stack">${cards || `<div class="empty">${ic('cart', 44)}<b>Ainda não há listas.</b><span>Carrega em “Nova lista” para começar, por exemplo “Dezembro”.</span></div>`}</div>
+  ${cur || `<div class="empty">${ic('cart', 44)}<b>Ainda não há listas.</b><span>Carrega em “Nova lista” para começar, por exemplo “Dezembro”.</span></div>`}
+  ${outras ? `<h3 class="sec">Outras listas</h3><div class="grp">${outras}</div>` : ''}
   ${S.lists.length ? '<p class="hint">← desliza uma lista para a apagar</p>' : ''}
   <button class="fab wide" data-act="nova-lista">${ic('plus', 22)}<span>Nova lista</span></button>
   </div>${nav('listas')}`;
@@ -213,34 +222,34 @@ function vLista(id) {
   const r = resumo(l), pct = r.n ? Math.round(r.done / r.n * 100) : 0;
   const its = Object.entries(l.items || {}).filter(([pid]) => S.products[pid]).map(([pid, it]) => ({ pid, it, p: S.products[pid] }))
     .sort((a, b) => secOrd(a.p.section) - secOrd(b.p.section) || a.p.name.localeCompare(b.p.name, 'pt'));
+  const cont = {}; its.forEach(x => cont[x.p.section] = (cont[x.p.section] || 0) + 1);
   let sec = '', rows = '';
   for (const { pid, it, p } of its) {
-    if (p.section !== sec) { sec = p.section; rows += `<h3 class="sec">${EMO[sec] || '🛒'} ${esc(sec)}</h3>`; }
+    if (p.section !== sec) {
+      if (sec) rows += '</div>';
+      sec = p.section; const fe = ui.fechadas.has(sec);
+      rows += `<button class="sec secbtn" data-act="toggle-sec" data-s="${esc(sec)}" aria-expanded="${!fe}"><span>${EMO[sec] || '🛒'} ${esc(sec)} · ${cont[sec]}</span><span class="chev ${fe ? 'fe' : ''}">▾</span></button><div class="grp${fe ? ' fechada' : ''}">`;
+    }
     const step = p.unit === 'kg' ? 0.5 : 1;
-    rows += `<div class="sw" data-sw="${pid}"><div class="sw-act"><button class="act red" data-act="tirar" data-lid="${id}" data-pid="${pid}">${ic('trash', 22)}<span>Tirar</span></button></div>
-    <div class="sw-front item ${it.d ? 'done' : ''}">
-      <div class="grow stack0">
-        <div class="row gap8 wrap"><span class="iname">${esc(p.name)}</span>${it.d && it.by ? `${av(it.by, 20)}<span class="small muted">${esc(membro(it.by)?.name || '')}</span>` : ''}</div>
-        <div class="row between gap8">
-          <div class="stepper">
-            <button class="sbtn" aria-label="Menos" data-act="qtd" data-lid="${id}" data-pid="${pid}" data-d="${-step}">${ic('minus', 18)}</button>
-            <input class="qty" inputmode="decimal" aria-label="Quantidade de ${esc(p.name)}" data-qty data-lid="${id}" data-pid="${pid}" value="${num(it.q || 0, p.unit)}"><span class="un">${p.unit}</span>
-            <button class="sbtn" aria-label="Mais" data-act="qtd" data-lid="${id}" data-pid="${pid}" data-d="${step}">${ic('plus', 18)}</button>
-          </div>
-          <span class="tot"><b>${eur((it.q || 0) * p.price)}</b><small>${eur(p.price)}/${p.unit}</small></span>
-        </div>
+    rows += `<div class="sw" data-sw="${pid}"><div class="sw-act"><button class="act red" data-act="tirar" data-lid="${id}" data-pid="${pid}">${ic('trash', 20)}<span>Tirar</span></button></div>
+    <div class="sw-front lrowi ${it.d ? 'done' : ''}">
+      <button class="tick xs ${it.d ? 'on' : ''}" aria-pressed="${!!it.d}" aria-label="${it.d ? 'Desmarcar' : 'Marcar como comprado'}" data-act="tick" data-lid="${id}" data-pid="${pid}">${it.d ? ic('check', 16) : ''}</button>
+      <span class="grow nm"><span class="iname" title="${esc(p.name)} · ${eur(p.price)}/${p.unit}">${esc(p.name)}</span>${it.d && it.by ? av(it.by, 18) : ''}</span>
+      <div class="stepper sm">
+        <button class="sbtn" aria-label="Menos" data-act="qtd" data-lid="${id}" data-pid="${pid}" data-d="${-step}">${ic('minus', 16)}</button>
+        <input class="qty" inputmode="decimal" aria-label="Quantidade de ${esc(p.name)}" data-qty data-lid="${id}" data-pid="${pid}" value="${num(it.q || 0, p.unit)}">${p.unit === 'kg' ? '<span class="un">kg</span>' : ''}
+        <button class="sbtn" aria-label="Mais" data-act="qtd" data-lid="${id}" data-pid="${pid}" data-d="${step}">${ic('plus', 16)}</button>
       </div>
-      <button class="tick ${it.d ? 'on' : ''}" aria-pressed="${!!it.d}" aria-label="${it.d ? 'Desmarcar' : 'Marcar como comprado'}" data-act="tick" data-lid="${id}" data-pid="${pid}">${it.d ? ic('check', 22) : ''}</button>
+      <b class="lp">${eur((it.q || 0) * p.price)}</b>
     </div></div>`;
   }
+  if (sec) rows += '</div>';
   return `${demoBar()}<div class="screen pad-fab">
   ${topo(esc(l.name), '#/', `<button class="iconbtn soft" aria-label="Exportar PDF" data-act="pdf" data-id="${id}">${ic('pdf', 22)}</button><button class="iconbtn" aria-label="Mais opções" data-act="menu-lista" data-id="${id}">${ic('dots', 22)}</button>`,
     `<a href="#/grupo" class="row gap6 small muted b7 nolink">${avs(20)}Partilhada com ${S.group.members.length}</a>`)}
-  <section class="summary" aria-label="Resumo">
-    <div class="row between end"><div class="stack0"><span class="b7 o9">Valor previsto</span><span class="xl">${eur(r.tot)}</span></div>
-      <div class="stack0 right"><span class="b7 o9">Itens</span><span class="xl">${r.n}</span></div></div>
-    <div class="bar light"><i style="width:${pct}%"></i></div>
-    <span class="b7">${r.done} de ${r.n} no carrinho · ${eur(r.doneTot)}</span>
+  <section class="summary slim" aria-label="Resumo">
+    <div class="row between"><span><b class="lg">${eur(r.tot)}</b> · ${r.n} ite${r.n === 1 ? 'm' : 'ns'}</span><span class="b7">${r.done}/${r.n} no carrinho</span></div>
+    <div class="bar light thin"><i style="width:${pct}%"></i></div>
   </section>
   <div class="stack8">${rows || `<div class="empty">${ic('plus', 40)}<b>Lista vazia.</b><span>Carrega no + para adicionar produtos.</span></div>`}</div>
   ${its.length ? '<p class="hint">← desliza um produto para o tirar da lista</p>' : ''}
@@ -259,11 +268,9 @@ function menuLista(id) {
 function vAdicionar(id) {
   const l = S.lists.find(x => x.id === id);
   if (!l) return `${topo('Produtos', '#/')}<div class="empty">Esta lista já não existe.</div>`;
-  const secs = ['Todas', ...SECCOES.filter(s => Object.values(S.products).some(p => p.section === s)), ...(Object.values(S.products).some(p => p.section === 'Outros') ? ['Outros'] : [])];
   return `<div class="screen pad-bottom">
   ${topo('Produtos', `#/lista/${id}`, `<a class="txtbtn" href="#/produto/novo?lista=${id}">+ Novo</a>`, `<span class="small muted b7">Adicionar a ${esc(l.name)}</span>`)}
-  <label class="search">${ic('search', 20)}<input type="search" placeholder="Procurar produto" aria-label="Procurar produto" data-search="add" value="${esc(ui.q)}"></label>
-  <div class="tabs" role="tablist">${secs.map(s => `<button role="tab" aria-selected="${ui.sec === s}" class="tab ${ui.sec === s ? 'on' : ''}" data-sec="${esc(s)}">${s === 'Todas' ? s : (EMO[s] || '') + ' ' + esc(s)}</button>`).join('')}</div>
+  <div class="row gap8"><label class="search grow">${ic('search', 20)}<input type="search" placeholder="Procurar" aria-label="Procurar produto" data-search="add" value="${esc(ui.q)}"></label>${(() => { const secs = ['Todas', ...SECCOES.filter(s => Object.values(S.products).some(p => p.section === s)), ...(Object.values(S.products).some(p => p.section === 'Outros') ? ['Outros'] : [])]; return `<select class="secsel" data-secsel="add" aria-label="Secção">${secs.map(s => `<option value="${esc(s)}" ${ui.sec === s ? 'selected' : ''}>${s === 'Todas' ? 'Todas' : (EMO[s] || '') + ' ' + esc(s)}</option>`).join('')}</select>`; })()}</div>
   <div id="resultados" class="stack8">${resultadosAdicionar(id)}</div>
   <div class="bottombar"><button class="btn" data-act="adicionar" data-id="${id}" ${ui.sel.size ? '' : 'disabled'}>${ic('check', 22)}<span id="addlbl">${lblAdd()}</span></button></div>
   </div>`;
@@ -276,12 +283,13 @@ function resultadosAdicionar(id) {
     .sort((a, b) => secOrd(a.section) - secOrd(b.section) || a.name.localeCompare(b.name, 'pt', { sensitivity: 'base' }));
   let sec = '', out = '';
   for (const p of ps.slice(0, 300)) {
-    if (p.section !== sec) { sec = p.section; out += `<h3 class="sec">${EMO[sec] || '🛒'} ${esc(sec)}</h3>`; }
+    if (p.section !== sec) { if (sec) out += '</div>'; sec = p.section; out += `<h3 class="sec">${EMO[sec] || '🛒'} ${esc(sec)}</h3><div class="grp">`; }
     const na = !!(l.items || {})[p.id], sel = ui.sel.has(p.id);
-    out += `<button class="prow ${sel ? 'sel' : ''}" ${na ? 'disabled' : ''} data-act="sel" data-pid="${p.id}" aria-pressed="${sel || na}">
-      <span class="grow stack0 left"><span class="iname">${esc(p.name)}</span><small class="muted">${eur(p.price)}/${p.unit}</small></span>
-      ${na ? `<span class="inlist">Na lista<span class="tick on sm">${ic('check', 18)}</span></span>` : `<span class="tick ${sel ? 'on acc' : ''} sm">${sel ? ic('check', 18) : ''}</span>`}</button>`;
+    out += `<button class="prow ${sel ? 'sel' : ''} ${na ? 'na' : ''}" ${na ? 'disabled' : ''} data-act="sel" data-pid="${p.id}" aria-pressed="${sel || na}">
+      <span class="grow iname left">${esc(p.name)}</span><small class="muted pr">${na ? 'Na lista' : `${eur(p.price)}/${p.unit}`}</small>
+      ${na ? `<span class="tick on xs">${ic('check', 16)}</span>` : `<span class="tick ${sel ? 'on acc' : ''} xs">${sel ? ic('check', 16) : ''}</span>`}</button>`;
   }
+  if (sec) out += '</div>';
   return out || `<div class="empty"><b>Nada encontrado.</b><a href="#/produto/novo?lista=${id}&nome=${encodeURIComponent(ui.q)}">Criar “${esc(ui.q)}” como produto novo</a></div>`;
 }
 
@@ -290,8 +298,7 @@ function vProdutos() {
   return `${demoBar()}<div class="screen pad-nav">
   <header class="hero row between end"><div class="stack0"><span class="muted b6">${Object.keys(S.products).length} produtos</span><h1 class="big">Produtos</h1></div>
     <a class="sqbtn" href="#/produto/novo" aria-label="Novo produto">${ic('plus', 24)}</a></header>
-  <label class="search">${ic('search', 20)}<input type="search" placeholder="Procurar produto" aria-label="Procurar produto" data-search="prod" value="${esc(ui.pq)}"></label>
-  <div class="tabs" role="tablist">${['Todas', ...SECCOES.filter(s => Object.values(S.products).some(p => p.section === s)), ...(Object.values(S.products).some(p => p.section === 'Outros') ? ['Outros'] : [])].map(s => `<button role="tab" aria-selected="${ui.psec === s}" class="tab ${ui.psec === s ? 'on' : ''}" data-psec="${esc(s)}">${s === 'Todas' ? s : (EMO[s] || '') + ' ' + esc(s)}</button>`).join('')}</div>
+  <div class="row gap8"><label class="search grow">${ic('search', 20)}<input type="search" placeholder="Procurar" aria-label="Procurar produto" data-search="prod" value="${esc(ui.pq)}"></label>${(() => { const secs = ['Todas', ...SECCOES.filter(s => Object.values(S.products).some(p => p.section === s)), ...(Object.values(S.products).some(p => p.section === 'Outros') ? ['Outros'] : [])]; return `<select class="secsel" data-secsel="prod" aria-label="Secção">${secs.map(s => `<option value="${esc(s)}" ${ui.psec === s ? 'selected' : ''}>${s === 'Todas' ? 'Todas' : (EMO[s] || '') + ' ' + esc(s)}</option>`).join('')}</select>`; })()}</div>
   <div id="prod-lista" class="stack8">${listaProdutos()}</div>
   <p class="hint">← desliza para editar ou apagar</p>
   </div>${nav('produtos')}`;
@@ -303,10 +310,11 @@ function listaProdutos() {
   const cont = {}; ps.forEach(p => cont[p.section] = (cont[p.section] || 0) + 1);
   let sec = '', out = '';
   for (const p of ps) {
-    if (p.section !== sec) { sec = p.section; out += `<h3 class="sec">${EMO[sec] || '🛒'} ${esc(sec)} · ${cont[sec]}</h3>`; }
+    if (p.section !== sec) { if (sec) out += '</div>'; sec = p.section; out += `<h3 class="sec">${EMO[sec] || '🛒'} ${esc(sec)} · ${cont[sec]}</h3><div class="grp">`; }
     out += `<div class="sw" data-sw="${p.id}"><div class="sw-act two"><a class="act orange" href="#/produto/${p.id}">${ic('edit', 20)}<span>Editar</span></a><button class="act red" data-act="apagar-produto" data-pid="${p.id}">${ic('trash', 20)}<span>Apagar</span></button></div>
       <div class="sw-front prow static"><span class="grow iname left">${esc(p.name)}</span><b class="price">${eur(p.price)}${p.unit === 'kg' ? '/kg' : ''}</b></div></div>`;
   }
+  if (sec) out += '</div>';
   return out || '<div class="empty"><b>Nada encontrado.</b></div>';
 }
 
@@ -448,6 +456,7 @@ document.addEventListener('click', async (e) => {
   try {
     switch (act) {
       case 'nova-lista': sheetNovaLista(); break;
+      case 'toggle-sec': { const s = b.dataset.s; if (ui.fechadas.has(s)) ui.fechadas.delete(s); else ui.fechadas.add(s); render(); break; }
       case 'menu-lista': menuLista(id); break;
       case 'pdf': pdf(id); break;
       case 'partilhar-texto': partilharTexto(id); break;
@@ -520,6 +529,8 @@ document.addEventListener('input', (e) => {
   if (s === 'prod') { ui.pq = e.target.value; $('#prod-lista').innerHTML = listaProdutos(); }
 });
 document.addEventListener('change', async (e) => {
+  const ss = e.target.closest('[data-secsel]');
+  if (ss) { if (ss.dataset.secsel === 'add') { ui.sec = ss.value; $('#resultados').innerHTML = resultadosAdicionar(rota().parts[1]); } else { ui.psec = ss.value; $('#prod-lista').innerHTML = listaProdutos(); } window.scrollTo(0, 0); return; }
   const q = e.target.closest('[data-qty]'); if (!q) return;
   try { await store.setQty(q.dataset.lid, q.dataset.pid, Math.max(0, Math.round(parseNum(q.value) * 100) / 100)); } catch (err) { falhou(err); }
 });
