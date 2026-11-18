@@ -205,7 +205,7 @@ function sheetNovaLista() {
   abrirSheet(`<form class="stack" data-form="nova-lista">
     <h2>Nova lista</h2>
     <label class="field">Nome da lista<input name="nome" required placeholder="Ex.: Dezembro, Festa…" maxlength="40"></label>
-    ${S.lists.length ? `<div class="stack0"><span class="small muted b7">Começar com os produtos de</span><div class="origens">${ops.map(([id, n, s], k) => `<label class="origem"><input type="radio" name="origem" value="${id}" ${k === (S.lists.length ? 1 : 0) ? 'checked' : ''}><span class="grow b7">${esc(n)}</span><small class="muted">${s}</small></label>`).join('')}</div><small class="muted">Os produtos vêm com quantidades a zero.</small></div>` : ''}
+    ${S.lists.length ? `<div class="stack0"><span class="small muted b7">Começar com os produtos de</span><div class="origens">${ops.map(([id, n, s], k) => `<label class="origem"><input type="radio" name="origem" value="${id}" ${k === 0 ? 'checked' : ''}><span class="grow b7">${esc(n)}</span><small class="muted">${s}</small></label>`).join('')}</div><small class="muted">Os produtos vêm com quantidades a zero.</small></div>` : ''}
     <button class="btn" type="submit">Criar lista</button></form>`);
 }
 
