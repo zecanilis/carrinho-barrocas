@@ -21,6 +21,8 @@ const I = {
   cart: '<path d="M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.5L21 8H6"/><circle cx="10" cy="20" r="1.3"/><circle cx="17" cy="20" r="1.3"/>',
   share: '<path d="M12 3v12"/><path d="M7 8l5-5 5 5"/><path d="M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/>',
   trash: '<path d="M4 7h16"/><path d="M10 11v6M14 11v6"/><path d="M6 7l1 13h10l1-13"/><path d="M9 7V4h6v3"/>',
+  down: '<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>',
+  up: '<path d="M12 16V5M7 10l5-5 5 5M5 20h14"/>',
   close: '<path d="M6 6l12 12M18 6L6 18"/>',
   edit: '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M14 6l4 4"/>',
   users: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14.5a5 5 0 0 1 5.5 5"/>',
@@ -301,7 +303,7 @@ function resultadosAdicionar(id) {
 function vProdutos() {
   return `${demoBar()}<div class="screen pad-nav">
   <header class="hero row between end"><div class="stack0"><span class="muted b6">${Object.keys(S.products).length} produtos</span><h1 class="big">Produtos</h1></div>
-    <a class="sqbtn" href="#/produto/novo" aria-label="Novo produto">${ic('plus', 24)}</a></header>
+    <div class="row gap8"><button class="iconbtn soft" aria-label="Exportar ou importar" data-act="menu-produtos">${ic('dots', 22)}</button><a class="sqbtn" href="#/produto/novo" aria-label="Novo produto">${ic('plus', 24)}</a></div></header>
   <label class="search">${ic('search', 20)}<input type="search" placeholder="Procurar produto" aria-label="Procurar produto" data-search="prod" value="${esc(ui.pq)}"></label>
   ${chipSec('prod')}
   <div id="prod-lista" class="stack8">${listaProdutos()}</div>
@@ -321,6 +323,101 @@ function listaProdutos() {
   }
   if (sec) out += '</div>';
   return out || '<div class="empty"><b>Nada encontrado.</b></div>';
+}
+
+// ------------------------------------------------------------------ exportar / importar base
+function menuProdutos() {
+  abrirSheet(`<div class="stack"><h2>Base de produtos</h2>
+    <button class="mitem" data-act="exportar-csv">${ic('down')}<span>Exportar para Excel<small class="muted"> · ficheiro CSV</small></span></button>
+    <button class="mitem" data-act="importar-csv">${ic('up')}<span>Importar ficheiro</span></button>
+    <p class="small muted">Exporta, muda preços ou nomes no Excel e importa de volta. Linhas novas sem código criam produtos. Importar nunca apaga nada.</p></div>`);
+}
+const csvCel = (v) => { v = String(v ?? ''); return /[";\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+function exportarCSV() {
+  const ps = Object.values(S.products).sort((a, b) => secOrd(a.section) - secOrd(b.section) || a.name.localeCompare(b.name, 'pt', { sensitivity: 'base' }));
+  const linhas = [['Código', 'Nome', 'Secção', 'Unidade', 'Preço'], ...ps.map(p => [p.id, p.name, p.section, p.unit, String(Number(p.price || 0).toFixed(2)).replace('.', ',')])];
+  const txt = '﻿' + linhas.map(l => l.map(csvCel).join(';')).join('\r\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([txt], { type: 'text/csv;charset=utf-8' }));
+  a.download = `carrinho-produtos-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  fecharSheet(); toast(`${ps.length} produtos exportados.`);
+}
+function lerCSV(txt) {
+  txt = txt.replace(/^﻿/, '');
+  const prim = txt.split(/\r?\n/)[0] || '';
+  const sep = [';', '\t', ','].sort((a, b) => prim.split(b).length - prim.split(a).length)[0];
+  const rows = []; let row = [], cel = '', q = false;
+  for (let i = 0; i < txt.length; i++) {
+    const c = txt[i];
+    if (q) { if (c === '"') { if (txt[i + 1] === '"') { cel += '"'; i++; } else q = false; } else cel += c; }
+    else if (c === '"') q = true;
+    else if (c === sep) { row.push(cel); cel = ''; }
+    else if (c === '\n' || c === '\r') { if (c === '\r' && txt[i + 1] === '\n') i++; row.push(cel); rows.push(row); row = []; cel = ''; }
+    else cel += c;
+  }
+  if (cel || row.length) { row.push(cel); rows.push(row); }
+  return rows.filter(r => r.some(c => c.trim()));
+}
+const numPreco = (v) => { const s = String(v || '').replace(/[€\s]/g, ''); if (!s) return NaN; return parseFloat(s.includes(',') ? s.replace(/\./g, '').replace(',', '.') : s); };
+let importPend = null;
+function analisarImport(txt) {
+  const rows = lerCSV(txt);
+  if (rows.length < 2) throw new Error('O ficheiro não tem produtos.');
+  const h = rows[0].map(c => norm(c));
+  const col = (...ns) => h.findIndex(c => ns.some(n => c.startsWith(n)));
+  const cC = col('codigo', 'id'), cN = col('nome', 'produto'), cS = col('seccao', 'secao'), cU = col('unidade'), cP = col('preco');
+  if (cN < 0 || cP < 0) throw new Error('Não encontrei as colunas Nome e Preço.');
+  const secs = [...SECCOES, 'Outros'];
+  const porNome = new Map(Object.values(S.products).map(p => [norm(p.name), p]));
+  const alt = [], novos = [], erros = [];
+  rows.slice(1).forEach((r, k) => {
+    const nome = (r[cN] || '').trim(); if (!nome) return;
+    const preco = numPreco(r[cP]);
+    const secTxt = cS >= 0 ? (r[cS] || '').trim() : '';
+    const sec = secTxt ? secs.find(s => norm(s) === norm(secTxt)) : null;
+    const un = cU >= 0 && /kg/i.test(r[cU] || '') ? 'kg' : (cU >= 0 && (r[cU] || '').trim() ? 'un' : null);
+    const p = (cC >= 0 && S.products[(r[cC] || '').trim()]) || porNome.get(norm(nome));
+    if (Number.isNaN(preco)) { erros.push(`Linha ${k + 2}: preço inválido (${esc(r[cP] || 'vazio')})`); return; }
+    if (p) {
+      const d = {};
+      if (nome !== p.name) d.name = nome;
+      if (Math.abs(preco - (p.price || 0)) > 0.004) d.price = Math.round(preco * 100) / 100;
+      if (sec && sec !== p.section) d.section = sec;
+      if (un && un !== p.unit) d.unit = un;
+      if (Object.keys(d).length) alt.push({ p, d });
+    } else novos.push({ name: nome, price: Math.round(preco * 100) / 100, section: sec || 'Outros', unit: un || 'un', receipt: '' });
+  });
+  return { alt, novos, erros };
+}
+function sheetImport(res) {
+  importPend = res;
+  const { alt, novos, erros } = res;
+  const nP = alt.filter(a => 'price' in a.d).length, nN = alt.filter(a => 'name' in a.d).length, nO = alt.filter(a => 'section' in a.d || 'unit' in a.d).length;
+  const ex = [...alt.slice(0, 8).map(({ p, d }) => `<li><b>${esc(d.name || p.name)}</b>${d.price !== undefined ? ` · ${eur(p.price)} → ${eur(d.price)}` : ''}${d.name ? ` · antes “${esc(p.name)}”` : ''}${d.section ? ` · ${esc(d.section)}` : ''}</li>`), ...novos.slice(0, 4).map(n => `<li><b>${esc(n.name)}</b> · novo · ${eur(n.price)}</li>`)].join('');
+  const nada = !alt.length && !novos.length;
+  abrirSheet(`<div class="stack"><h2>Importar</h2>
+    ${nada ? '<p>O ficheiro é igual à base. Não há nada para mudar.</p>' : `<div class="impres">${nP ? `<span><b>${nP}</b> ${nP === 1 ? 'preço alterado' : 'preços alterados'}</span>` : ''}${nN ? `<span><b>${nN}</b> ${nN === 1 ? 'nome mudado' : 'nomes mudados'}</span>` : ''}${nO ? `<span><b>${nO}</b> ${nO === 1 ? 'secção ou unidade' : 'secções ou unidades'}</span>` : ''}${novos.length ? `<span><b>${novos.length}</b> ${novos.length === 1 ? 'produto novo' : 'produtos novos'}</span>` : ''}</div>
+    <ul class="implist">${ex}</ul>${alt.length + novos.length > 12 ? `<p class="small muted">… e mais ${alt.length + novos.length - 12}.</p>` : ''}`}
+    ${erros.length ? `<p class="small" style="color:var(--red)">${erros.slice(0, 3).join('<br>')}${erros.length > 3 ? `<br>… e mais ${erros.length - 3} linhas ignoradas.` : ''}</p>` : ''}
+    ${nada ? '' : '<button class="btn" data-act="aplicar-import">Aplicar alterações</button>'}</div>`);
+}
+async function aplicarImport() {
+  const r = importPend; if (!r) return; importPend = null;
+  fecharSheet(); toast('A importar…');
+  for (const { p, d } of r.alt) await store.updateProduct(p.id, d);
+  for (const n of r.novos) await store.addProduct(n);
+  toast(`Base atualizada: ${r.alt.length} alterados, ${r.novos.length} novos.`);
+}
+function escolherFicheiro() {
+  const inp = document.createElement('input'); inp.type = 'file'; inp.accept = '.csv,text/csv,text/plain';
+  inp.onchange = async () => {
+    const f = inp.files[0]; if (!f) return;
+    let txt = await f.text();
+    if (txt.includes('�')) { try { txt = new TextDecoder('windows-1252').decode(await f.arrayBuffer()); } catch {} }
+    try { sheetImport(analisarImport(txt)); } catch (e) { fecharSheet(); toast(e.message); }
+  };
+  inp.click();
 }
 
 // ------------------------------------------------------------------ ecrã: produto (novo/editar)
@@ -461,6 +558,10 @@ document.addEventListener('click', async (e) => {
   try {
     switch (act) {
       case 'nova-lista': sheetNovaLista(); break;
+      case 'menu-produtos': menuProdutos(); break;
+      case 'exportar-csv': exportarCSV(); break;
+      case 'importar-csv': fecharSheet(); escolherFicheiro(); break;
+      case 'aplicar-import': await aplicarImport(); break;
       case 'escolher-sec': sheetSeccoes(b.dataset.k); break;
       case 'pick-sec': { if (b.dataset.k === 'add') ui.sec = b.dataset.s; else ui.psec = b.dataset.s; fecharSheet(); render(); window.scrollTo(0, 0); break; }
       case 'toggle-sec': { const s = b.dataset.s; if (ui.fechadas.has(s)) ui.fechadas.delete(s); else ui.fechadas.add(s); render(); break; }
