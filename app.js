@@ -201,14 +201,11 @@ function vListas() {
   </div>${nav('listas')}`;
 }
 function sheetNovaLista() {
-  const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
-  const d = new Date(); const prox = meses[(d.getDate() > 20 ? d.getMonth() + 1 : d.getMonth()) % 12];
-  const ult = S.lists[0];
+  const ops = [['', 'Lista vazia', ''], ...S.lists.map(l => [l.id, l.name, `${Object.keys(l.items || {}).length} produtos`])];
   abrirSheet(`<form class="stack" data-form="nova-lista">
     <h2>Nova lista</h2>
     <label class="field">Nome da lista<input name="nome" required placeholder="Ex.: Dezembro, Festa…" maxlength="40"></label>
-    <div class="chips">${[prox, 'Natal', 'Semana 1', 'Festa'].map(c => `<button type="button" class="chip" data-chip="${c}">${c}</button>`).join('')}</div>
-    ${ult ? `<label class="check"><input type="checkbox" name="copiar" checked><span><b>Começar com os produtos de “${esc(ult.name)}”</b><small>Copia os produtos, com quantidades a zero</small></span></label>` : ''}
+    ${S.lists.length ? `<div class="stack0"><span class="small muted b7">Começar com os produtos de</span><div class="origens">${ops.map(([id, n, s], k) => `<label class="origem"><input type="radio" name="origem" value="${id}" ${k === (S.lists.length ? 1 : 0) ? 'checked' : ''}><span class="grow b7">${esc(n)}</span><small class="muted">${s}</small></label>`).join('')}</div><small class="muted">Os produtos vêm com quantidades a zero.</small></div>` : ''}
     <button class="btn" type="submit">Criar lista</button></form>`);
 }
 
@@ -516,7 +513,7 @@ document.addEventListener('submit', async (e) => {
   try {
     if (k === 'nova-lista') {
       const fd = new FormData(f); const nome = fd.get('nome').trim(); if (!nome) return;
-      const nid = await store.addList(nome, fd.get('copiar') ? S.lists[0]?.id : null, S.lists);
+      const nid = await store.addList(nome, fd.get('origem') || null, S.lists);
       fecharSheet(); location.hash = `#/lista/${nid}`;
     }
     if (k === 'produto') {
