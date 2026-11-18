@@ -175,30 +175,27 @@ async function onEntrar(form, criar) {
 
 // ------------------------------------------------------------------ ecrã: listas
 function vListas() {
-  const curL = S.lists.find(l => { const r = resumo(l); return !(r.n && r.done === r.n); }) || S.lists[0];
   const swAct = (l) => `<div class="sw-act"><button class="act red" data-act="apagar-lista" data-id="${l.id}">${ic('trash', 22)}<span>Apagar</span></button></div>`;
-  let cur = '';
-  if (curL) {
-    const r = resumo(curL), pct = r.n ? Math.round(r.done / r.n * 100) : 0, fim = r.n > 0 && r.done === r.n;
-    cur = `<div class="sw big-sw" data-sw="${curL.id}" data-kind="lista">${swAct(curL)}
-      <a class="sw-front curcard" href="#/lista/${curL.id}">
-        <div class="row between small b7 o9"><span>${fim ? 'Última lista' : 'Lista em curso'}</span><span>${r.n} itens</span></div>
-        <div class="row between end gap8"><span class="curname">${esc(curL.name)}</span><span class="curtot">${eur(r.tot)}</span></div>
+  const ativas = [], feitas = [];
+  for (const l of S.lists) { const r = resumo(l); (r.n > 0 && r.done === r.n ? feitas : ativas).push([l, r]); }
+  const cards = ativas.map(([l, r]) => {
+    const pct = r.n ? Math.round(r.done / r.n * 100) : 0;
+    return `<div class="sw big-sw" data-sw="${l.id}" data-kind="lista">${swAct(l)}
+      <a class="sw-front curcard" href="#/lista/${l.id}">
+        <div class="row between end gap8"><span class="curname">${esc(l.name)}</span><span class="curtot">${eur(r.tot)}</span></div>
         <div class="bar light"><i style="width:${pct}%"></i></div>
-        <div class="row between small b7"><span>${r.done} de ${r.n} no carrinho</span><span class="openbtn">Abrir lista →</span></div>
+        <div class="row between small b7"><span>${r.done} de ${r.n} no carrinho</span><span class="openbtn">Abrir →</span></div>
       </a></div>`;
-  }
-  const outras = S.lists.filter(l => l !== curL).map(l => {
-    const r = resumo(l), fim = r.n > 0 && r.done === r.n;
-    return `<div class="sw" data-sw="${l.id}" data-kind="lista">${swAct(l)}
-      <a class="sw-front lrow" href="#/lista/${l.id}"><span class="grow b7">${esc(l.name)}</span>${fim ? '<span class="pill ok">Concluída</span>' : '<span class="pill">A decorrer</span>'}<b class="lp">${eur(r.tot)}</b></a></div>`;
   }).join('');
+  const rows = feitas.map(([l, r]) => `<div class="sw" data-sw="${l.id}" data-kind="lista">${swAct(l)}
+      <a class="sw-front lrow feita" href="#/lista/${l.id}"><span class="grow b7">✓ ${esc(l.name)}</span><b class="lp">${eur(r.tot)}</b></a></div>`).join('');
   return `${demoBar()}<div class="screen pad-nav">
   <header class="hero"><span class="muted b6">${esc(S.group.name)}</span>
     <div class="row between"><h1 class="big">As minhas listas</h1><a href="#/grupo" class="avbox" aria-label="Grupo">${avs(30)}</a></div></header>
   ${dicaInstalar()}
-  ${cur || `<div class="empty">${ic('cart', 44)}<b>Ainda não há listas.</b><span>Carrega em “Nova lista” para começar, por exemplo “Dezembro”.</span></div>`}
-  ${outras ? `<h3 class="sec">Outras listas</h3><div class="grp">${outras}</div>` : ''}
+  ${!S.lists.length ? `<div class="empty">${ic('cart', 44)}<b>Ainda não há listas.</b><span>Carrega em “Nova lista” para começar, por exemplo “Dezembro”.</span></div>` : ''}
+  ${cards ? `<h3 class="sec">A decorrer · ${ativas.length}</h3><div class="stack8">${cards}</div>` : ''}
+  ${rows ? `<h3 class="sec">Concluídas</h3><div class="grp">${rows}</div>` : ''}
   ${S.lists.length ? '<p class="hint">← desliza uma lista para a apagar</p>' : ''}
   <button class="fab wide" data-act="nova-lista">${ic('plus', 22)}<span>Nova lista</span></button>
   </div>${nav('listas')}`;
@@ -209,7 +206,7 @@ function sheetNovaLista() {
   const ult = S.lists[0];
   abrirSheet(`<form class="stack" data-form="nova-lista">
     <h2>Nova lista</h2>
-    <label class="field">Nome da lista<input name="nome" required value="${prox}" maxlength="40"></label>
+    <label class="field">Nome da lista<input name="nome" required placeholder="Ex.: Dezembro, Festa…" maxlength="40"></label>
     <div class="chips">${[prox, 'Natal', 'Semana 1', 'Festa'].map(c => `<button type="button" class="chip" data-chip="${c}">${c}</button>`).join('')}</div>
     ${ult ? `<label class="check"><input type="checkbox" name="copiar" checked><span><b>Começar com os produtos de “${esc(ult.name)}”</b><small>Copia os produtos, com quantidades a zero</small></span></label>` : ''}
     <button class="btn" type="submit">Criar lista</button></form>`);
