@@ -75,7 +75,7 @@ class LocalStore {
     for (const [id, p] of Object.entries(this.db.products)) if (desde < (REMOVER[p.name] || 0)) delete this.db.products[id];
     for (const p of Object.values(this.db.products)) { const nv = novoNome(p.name, desde); if (nv) p.name = nv; }
     const tem = new Set(Object.values(this.db.products).map(p => p.name.toLowerCase()));
-    for (const p of PRODUTOS) if (NOVOS_V3.includes(p.n) && !tem.has(p.n.toLowerCase())) this.db.products['p-' + uid8()] = { name: p.n, receipt: p.t, section: p.s, unit: p.u, price: p.p, count: 0 };
+    for (const p of PRODUTOS) if (desde < (NOVOS_V3[p.n] || 0) && !tem.has(p.n.toLowerCase())) this.db.products['p-' + uid8()] = { name: p.n, receipt: p.t, section: p.s, unit: p.u, price: p.p, count: 0 };
     this.db.group.seedV = SEED_VERSAO;
     this._emit('group', 'products');
   }
@@ -248,7 +248,7 @@ class FirebaseStore {
     const b = writeBatch(this.db);
     for (const d of docs) if (desde < (REMOVER[d.data().name] || 0)) b.delete(d.ref);
     for (const d of docs) { const nv = novoNome(d.data().name, desde); if (nv) b.update(d.ref, { name: nv }); }
-    for (const p of PRODUTOS) if (NOVOS_V3.includes(p.n) && !tem.has(p.n.toLowerCase())) b.set(doc(this._c('products')), { name: p.n, receipt: p.t, section: p.s, unit: p.u, price: p.p, count: 0 });
+    for (const p of PRODUTOS) if (desde < (NOVOS_V3[p.n] || 0) && !tem.has(p.n.toLowerCase())) b.set(doc(this._c('products')), { name: p.n, receipt: p.t, section: p.s, unit: p.u, price: p.p, count: 0 });
     await b.commit();
     await updateDoc(this._g(), { seedV: SEED_VERSAO });
   }
