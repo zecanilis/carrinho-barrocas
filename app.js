@@ -36,6 +36,7 @@ let unsub = [];
 const ui = { fechadas: new Set(), sel: new Set(), q: '', sec: 'Todas', pq: '', psec: 'Todas', installHidden: localStorage.getItem('cb-noinstall') === '1' };
 
 const membro = (uid) => (S.group?.members || []).find(m => m.uid === uid);
+const nomeDe = (uid) => membro(uid)?.name || 'alguém';
 const souDono = () => S.group && S.group.owner === store.uid;
 const av = (uid, size = 24) => {
   const m = membro(uid);
@@ -254,7 +255,7 @@ function vLista(id) {
     const step = p.unit === 'kg' ? 0.5 : 1;
     rows += `<div class="sw" data-sw="${pid}"><div class="sw-act"><button class="act red" data-act="tirar" data-lid="${id}" data-pid="${pid}">${ic('trash', 20)}<span>Tirar</span></button></div>
     <div class="sw-front lrowi ${it.d ? 'done' : ''}">
-      <span class="grow nm"><span class="iname" title="${esc(p.name)} · ${eur(p.price)}/${p.unit}">${esc(p.name)}</span>${it.d && it.by ? av(it.by, 18) : ''}</span>
+      <span class="grow nm"><span class="iname" title="${esc(p.name)} · ${eur(p.price)}/${p.unit}">${esc(p.name)}</span>${(it.d ? it.by : it.add) ? `<span class="quem" title="${it.d ? 'Comprado por' : 'Pedido por'} ${esc(nomeDe(it.d ? it.by : it.add))}">${av(it.d ? it.by : it.add, 18)}</span>` : ''}</span>
       <div class="stepper sm">
         <button class="sbtn" aria-label="Menos" data-act="qtd" data-lid="${id}" data-pid="${pid}" data-d="${-step}">${ic('minus', 16)}</button>
         <input class="qty" inputmode="decimal" aria-label="Quantidade de ${esc(p.name)}" data-qty data-lid="${id}" data-pid="${pid}" value="${num(it.q || 0, p.unit)}">${p.unit === 'kg' ? '<span class="un">kg</span>' : ''}
