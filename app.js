@@ -196,7 +196,7 @@ async function onEntrar(form, criar) {
   try {
     if (criar) await store.createGroup((fd.get('grupo') || 'Condomínio Barrocas').trim(), nome);
     else await store.joinGroup(fd.get('code'), nome);
-    location.hash = '#/'; ligar(); render();
+    ir('#/'); ligar(); render();
   } catch (e) { toast(e.message || 'Algo correu mal.'); if (btn) { btn.disabled = false; btn.textContent = criar ? 'Criar grupo' : 'Entrar'; } }
 }
 
@@ -595,7 +595,7 @@ document.addEventListener('click', async (e) => {
       case 'partilhar-texto': partilharTexto(id); break;
       case 'renomear-lista': { const l = S.lists.find(x => x.id === id); const v = await pedirTexto('Mudar o nome', l.name); if (v) await store.renameList(id, v); break; }
       case 'apagar-lista': { const l = S.lists.find(x => x.id === id); fecharSheet();
-        if (await confirmar({ titulo: 'Apagar lista?', texto: `A lista <b>${esc(l.name)}</b> é apagada para todo o grupo. Os produtos continuam na base.` })) { await store.deleteList(id); if (location.hash !== '#/') location.hash = '#/'; toast('Lista apagada.'); } else fecharSwipes(); break; }
+        if (await confirmar({ titulo: 'Apagar lista?', texto: `A lista <b>${esc(l.name)}</b> é apagada para todo o grupo. Os produtos continuam na base.` })) { await store.deleteList(id); if (location.hash !== '#/') ir('#/'); toast('Lista apagada.'); } else fecharSwipes(); break; }
       case 'qtd': { const l = S.lists.find(x => x.id === lid); const it = l.items[pid]; const q = Math.max(0, Math.round(((it.q || 0) + parseFloat(b.dataset.d)) * 100) / 100); await store.setQty(lid, pid, q); break; }
       case 'tick': { const l = S.lists.find(x => x.id === lid); await store.setDone(lid, pid, !l.items[pid].d); break; }
       case 'tirar': { const p = S.products[pid]; const l = S.lists.find(x => x.id === lid);
