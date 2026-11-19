@@ -64,7 +64,7 @@ async function start() {
   if (gid === 'LOGIN') S.needLogin = true;
   else if (gid) ligar();
   render();
-  window.addEventListener('hashchange', () => { ui.sel.clear(); ui.q = ''; render(); window.scrollTo(0, 0); });
+  window.addEventListener('hashchange', () => { notarHash(); ui.sel.clear(); ui.q = ''; render(); window.scrollTo(0, 0); });
 }
 function ligar() {
   S.linked = true;
@@ -119,6 +119,31 @@ const nav = (on) => `<nav class="nav" aria-label="Navegação">
   <a href="#/produtos" class="${on === 'produtos' ? 'on' : ''}">${ic('box', 24)}<span>Produtos</span></a>
   <a href="#/grupo" class="${on === 'grupo' ? 'on' : ''}">${ic('users', 24)}<span>Grupo</span></a></nav>`;
 const demoBar = () => store.demo ? `<div class="demo">Modo demonstração: só neste aparelho. <a href="#/grupo">Saber mais</a></div>` : '';
+// ------------------------------------------------------------------ navegação: o "voltar" do telemóvel segue a hierarquia
+// Guardamos a pilha de ecrãs desta sessão. Ir para um ecrã que já está na pilha volta atrás no histórico
+// (em vez de acrescentar), e trocar de separador substitui o ecrã atual. Assim o botão de voltar não
+// percorre o histórico todo.
+const pilha = [location.hash || '#/'];
+let trocando = false;
+const RAIZES = ['#/', '#/produtos', '#/grupo'];
+function notarHash() {
+  const h = location.hash || '#/';
+  if (trocando) { trocando = false; pilha[pilha.length - 1] = h; return; }
+  const i = pilha.lastIndexOf(h);
+  if (i >= 0 && i < pilha.length - 1) pilha.length = i + 1; else if (pilha[pilha.length - 1] !== h) pilha.push(h);
+}
+function ir(h) {
+  h = h || '#/';
+  const i = pilha.lastIndexOf(h);
+  if (i >= 0 && i < pilha.length - 1) history.go(i - (pilha.length - 1));
+  else if (RAIZES.includes(h) && RAIZES.includes(pilha[pilha.length - 1])) { trocando = true; location.replace(h); }
+  else location.hash = h;
+}
+document.addEventListener('click', (e) => {
+  const a = e.target.closest('a[href^="#/"]');
+  if (!a || e.defaultPrevented) return;
+  e.preventDefault(); ir(a.getAttribute('href'));
+});
 const topo = (titulo, voltar, extra = '', sub = '') => `<header class="top">
   <a href="${voltar}" class="iconbtn" aria-label="Voltar">${ic('back', 26)}</a>
   <div class="grow"><h1>${titulo}</h1>${sub}</div>${extra}</header>`;
@@ -576,7 +601,7 @@ document.addEventListener('click', async (e) => {
       case 'tirar': { const p = S.products[pid]; const l = S.lists.find(x => x.id === lid);
         if (await confirmar({ titulo: 'Tirar da lista?', texto: `<b>${esc(p.name)}</b> sai da lista ${esc(l.name)}. Continua na base de produtos.`, botao: 'Tirar' })) await store.removeItem(lid, pid); else fecharSwipes(); break; }
       case 'sel': { ui.sel.has(pid) ? ui.sel.delete(pid) : ui.sel.add(pid); const on = ui.sel.has(pid); b.classList.toggle('sel', on); b.setAttribute('aria-pressed', on); b.querySelector('.tick').outerHTML = `<span class="tick ${on ? 'on acc' : ''} sm">${on ? ic('check', 18) : ''}</span>`; const ab = $('[data-act=adicionar]'); ab.disabled = !ui.sel.size; $('#addlbl').textContent = lblAdd(); break; }
-      case 'adicionar': { const n = ui.sel.size; await store.addItems(id, [...ui.sel], 1); ui.sel.clear(); location.hash = `#/lista/${id}`; toast(`${n} produto${n > 1 ? 's' : ''} adicionado${n > 1 ? 's' : ''}.`); break; }
+      case 'adicionar': { const n = ui.sel.size; await store.addItems(id, [...ui.sel], 1); ui.sel.clear(); ir(`#/lista/${id}`); toast(`${n} produto${n > 1 ? 's' : ''} adicionado${n > 1 ? 's' : ''}.`); break; }
       case 'apagar-produto': { const p = S.products[pid];
         if (await confirmar({ titulo: 'Apagar produto?', texto: `<b>${esc(p.name)}</b> sai da base de produtos e deixa de aparecer nas listas.` })) { await store.deleteProduct(pid); toast('Produto apagado.'); } else fecharSwipes(); break; }
       case 'convite': { const txt = `Junta-te ao ${S.group.name} no Carrinho Barrocas 🛒\nCódigo: ${S.group.code}`; try { if (navigator.share) await navigator.share({ title: 'Carrinho Barrocas', text: txt, url: linkConvite() }); else { await navigator.clipboard.writeText(`${txt}\n${linkConvite()}`); toast('Convite copiado.'); } } catch { } break; }
@@ -615,18 +640,18 @@ document.addEventListener('submit', async (e) => {
     if (k === 'nova-lista') {
       const fd = new FormData(f); const nome = fd.get('nome').trim(); if (!nome) return;
       const nid = await store.addList(nome, fd.get('origem') || null, S.lists);
-      fecharSheet(); location.hash = `#/lista/${nid}`;
+      fecharSheet(); ir(`#/lista/${nid}`);
     }
     if (k === 'produto') {
       const fd = new FormData(f);
       const p = { name: fd.get('name').trim(), section: fd.get('section'), unit: fd.get('unit'), price: Math.round(parseNum(fd.get('price')) * 100) / 100 };
       if (!p.name) return;
       const { pid, lid } = f.dataset;
-      if (pid) { await store.updateProduct(pid, p); toast('Produto guardado.'); location.hash = '#/produtos'; }
+      if (pid) { await store.updateProduct(pid, p); toast('Produto guardado.'); ir('#/produtos'); }
       else {
         const nid = await store.addProduct({ ...p, receipt: '' });
-        if (lid && fd.get('junta')) { await store.addItems(lid, [nid], 1); toast('Produto criado e juntado à lista.'); location.hash = `#/lista/${lid}`; }
-        else { toast('Produto criado.'); location.hash = lid ? `#/adicionar/${lid}` : '#/produtos'; }
+        if (lid && fd.get('junta')) { await store.addItems(lid, [nid], 1); toast('Produto criado e juntado à lista.'); ir(`#/lista/${lid}`); }
+        else { toast('Produto criado.'); ir(lid ? `#/adicionar/${lid}` : '#/produtos'); }
       }
     }
   } catch (err) { falhou(err); }
