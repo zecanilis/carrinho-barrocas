@@ -674,14 +674,14 @@ document.addEventListener('focusin', (e) => { if (e.target.matches('[data-qty]')
 let sw = null;
 function fecharSwipes(except) { document.querySelectorAll('.sw.open').forEach(x => { if (x !== except) { x.classList.remove('open'); x.querySelector('.sw-front').style.transform = ''; } }); }
 document.addEventListener('pointerdown', (e) => {
-  const front = e.target.closest('.sw-front'); if (!front || e.target.closest('input,button:not(.sw-front)')) { if (!e.target.closest('.sw-act')) fecharSwipes(); return; }
+  const front = e.target.closest('.sw-front'); if (!front) { if (!e.target.closest('.sw-act')) fecharSwipes(); return; }
   const row = front.closest('.sw');
   sw = { row, front, x0: e.clientX, y0: e.clientY, w: row.querySelector('.sw-act').offsetWidth, base: row.classList.contains('open') ? -row.querySelector('.sw-act').offsetWidth : 0, moving: false, id: e.pointerId };
 });
 document.addEventListener('pointermove', (e) => {
   if (!sw || e.pointerId !== sw.id) return;
   const dx = e.clientX - sw.x0, dy = e.clientY - sw.y0;
-  if (!sw.moving) { if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy)) { sw.moving = true; fecharSwipes(sw.row); sw.row.classList.add('moving'); sw.front.style.transition = 'none'; } else if (Math.abs(dy) > 10) { sw = null; return; } else return; }
+  if (!sw.moving) { if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy) * 0.8) { sw.moving = true; fecharSwipes(sw.row); sw.row.classList.add('moving'); sw.front.style.transition = 'none'; } else if (Math.abs(dy) > 12 && Math.abs(dy) > Math.abs(dx) * 1.25) { sw = null; return; } else return; }
   const x = Math.min(0, Math.max(-sw.w - 30, sw.base + dx));
   sw.front.style.transform = `translateX(${x}px)`;
 });
@@ -690,7 +690,7 @@ const fimSwipe = (e) => {
   if (sw.moving) {
     const m = new DOMMatrix(getComputedStyle(sw.front).transform).m41;
     sw.front.style.transition = '';
-    const abre = m < -sw.w * 0.4;
+    const abre = sw.base ? m < -sw.w * 0.75 : m < -sw.w * 0.25;
     sw.row.classList.toggle('open', abre); const rr = sw.row; setTimeout(() => rr.classList.remove('moving'), 250);
     sw.front.style.transform = abre ? `translateX(${-sw.w}px)` : '';
     suprimir = Date.now();
